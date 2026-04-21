@@ -82,7 +82,7 @@ TEXTS = {
         "main_menu": "Main Menu",
         "select_game": "Select a Game",
         "pawn_chess": "Pawn Chess",
-        "tictactoe": "Tic-Tac-Toe",
+        "tictactoe": "Tic-Tac-Toe (4 in a Row)",
         "difficulty": "Difficulty",
         "easy": "Easy",
         "medium": "Medium",
@@ -488,7 +488,6 @@ def show_rules(root, game):
 # SPIELSCREEN
 # ─────────────────────────────────────────────
 CELL_SIZE = 72
-TTT_CELL_SIZE = 140   # größere Zellen für das kleinere 3x3-Brett
 PIECE_RADIUS = 26
 
 board_canvas = None
@@ -553,10 +552,7 @@ def build_game_screen(root, frame):
     status_label.pack(pady=(12, 6))
 
     # Spielfeld-Canvas
-    if game == "tictactoe":
-        canvas_size = TTT_CELL_SIZE * ttt.BOARD_SIZE
-    else:
-        canvas_size = CELL_SIZE * 6
+    canvas_size = CELL_SIZE * 6
     board_canvas = tk.Canvas(frame, width=canvas_size, height=canvas_size,
                               bg=COLORS["bg_dark"], highlightthickness=0)
     board_canvas.pack(pady=10)
@@ -587,15 +583,12 @@ def draw_board():
 
     valid_targets = set((m[2], m[3]) for m in valid_moves) if game == "pawn_chess" else set()
 
-    cs = TTT_CELL_SIZE if game == "tictactoe" else CELL_SIZE
-    board_size = ttt.BOARD_SIZE if game == "tictactoe" else 6
-
-    for row in range(board_size):
-        for col in range(board_size):
-            x0 = col * cs
-            y0 = row * cs
-            x1 = x0 + cs
-            y1 = y0 + cs
+    for row in range(6):
+        for col in range(6):
+            x0 = col * CELL_SIZE
+            y0 = row * CELL_SIZE
+            x1 = x0 + CELL_SIZE
+            y1 = y0 + CELL_SIZE
 
             # Feldfarbe
             if (row + col) % 2 == 0:
@@ -630,8 +623,8 @@ def draw_board():
 
             # Figuren zeichnen
             cell = board[row][col]
-            cx = x0 + cs // 2
-            cy = y0 + cs // 2
+            cx = x0 + CELL_SIZE // 2
+            cy = y0 + CELL_SIZE // 2
             r = PIECE_RADIUS
 
             if game == "pawn_chess":
@@ -654,40 +647,35 @@ def draw_board():
             elif game == "tictactoe":
                 if cell == ttt.HUMAN:
                     # X: hellblau, breite Linien, dunkle Umrahmung → gut lesbar
-                    d = cs * 20 // CELL_SIZE
-                    lw_out = max(4, cs * 6 // CELL_SIZE)
-                    lw_in  = max(2, cs * 3 // CELL_SIZE)
+                    d = 20
                     for dx, dy in [(1, 1), (-1, -1)]:
                         board_canvas.create_line(
                             cx - d * dx, cy - d * dy,
                             cx + d * dx, cy + d * dy,
-                            fill="#1a237e", width=lw_out)
+                            fill="#1a237e", width=6)
                     for dx, dy in [(1, -1), (-1, 1)]:
                         board_canvas.create_line(
                             cx - d * dx, cy - d * dy,
                             cx + d * dx, cy + d * dy,
-                            fill="#1a237e", width=lw_out)
+                            fill="#1a237e", width=6)
                     # Heller Vordergrund
                     for dx, dy in [(1, 1), (-1, -1)]:
                         board_canvas.create_line(
                             cx - d * dx, cy - d * dy,
                             cx + d * dx, cy + d * dy,
-                            fill=COLORS["ttt_x"], width=lw_in)
+                            fill=COLORS["ttt_x"], width=3)
                     for dx, dy in [(1, -1), (-1, 1)]:
                         board_canvas.create_line(
                             cx - d * dx, cy - d * dy,
                             cx + d * dx, cy + d * dy,
-                            fill=COLORS["ttt_x"], width=lw_in)
+                            fill=COLORS["ttt_x"], width=3)
 
                 elif cell == ttt.AI:
                     # O: rot, breite Kontur, dunkle Schatten-Oval → gut lesbar
-                    r_o   = cs * 22 // CELL_SIZE
-                    lw_out = max(4, cs * 6 // CELL_SIZE)
-                    lw_in  = max(2, cs * 3 // CELL_SIZE)
-                    board_canvas.create_oval(cx - r_o, cy - r_o, cx + r_o, cy + r_o,
-                                              outline="#7f0000", width=lw_out)
-                    board_canvas.create_oval(cx - r_o, cy - r_o, cx + r_o, cy + r_o,
-                                              outline=COLORS["ttt_o"], width=lw_in)
+                    board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
+                                              outline="#7f0000", width=6)
+                    board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
+                                              outline=COLORS["ttt_o"], width=3)
 
 
 def _draw_piece(canvas, cx, cy, r, fill, outline):
@@ -708,15 +696,13 @@ def on_board_click(event):
     if not app_state["human_turn"]:
         return
 
-    game = app_state["game"]
-    cs = TTT_CELL_SIZE if game == "tictactoe" else CELL_SIZE
-    board_size = ttt.BOARD_SIZE if game == "tictactoe" else 6
+    col = event.x // CELL_SIZE
+    row = event.y // CELL_SIZE
 
-    col = event.x // cs
-    row = event.y // cs
-
-    if not (0 <= row < board_size and 0 <= col < board_size):
+    if not (0 <= row < 6 and 0 <= col < 6):
         return
+
+    game = app_state["game"]
 
     if game == "pawn_chess":
         handle_pawn_chess_click(row, col)
