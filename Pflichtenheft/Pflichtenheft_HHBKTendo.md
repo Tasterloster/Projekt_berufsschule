@@ -3,8 +3,8 @@
 **Projekt:** Strategiespiele-Prototyp mit MiniMax-KI
 **Auftraggeber:** HHBK Tendo Research Center
 **Auftragnehmer:** Projektteam (Lernfeld 5)
-**Version:** 1.0
-**Datum:** 2026-04-20
+**Version:** 1.1
+**Datum:** 2026-04-21
 **Status:** Entwurf
 
 ---
@@ -35,7 +35,7 @@
 |----|---------------|--------------|
 | PF-M01 | LF4000 | Mindestens zwei Strategiespiele sind vollständig spielbar. |
 | PF-M02 | LF4010 | Alle Spiele sind in einer einzigen Python-Anwendung mit grafischer Benutzeroberfläche (tkinter) integriert. |
-| PF-M03 | LF4020 | Jedes Spiel verwendet ein 6×6-Spielfeld. |
+| PF-M03 | LF4020 | Bauernschach verwendet ein 6×6-Spielfeld; Tic-Tac-Toe verwendet ein 3×3-Spielfeld. |
 | PF-M04 | LF4030 | Die KI nutzt den MiniMax-Algorithmus für alle Spiele. |
 | PF-M05 | LF4040 | Der menschliche Spieler macht immer den ersten Zug; die KI antwortet als zweiter Spieler. |
 | PF-M06 | LF4050 | Für jedes Spiel ist die Spielstärke (Suchtiefe 1–5) vor Spielbeginn einstellbar. |
@@ -81,7 +81,7 @@ Testpersonen im Alter 12–99, die Strategiespiele bevorzugen, aus den Märkten:
 
 | Eigenschaft | Wert |
 |-------------|------|
-| Betriebssystem | Windows 10 / 11 (macOS als Entwicklungsumgebung) |
+| Betriebssystem | Windows 10 / 11, macOS |
 | Programmiersprache | Python 3.10+ |
 | GUI-Framework | tkinter (stdlib) |
 | Datenbank | SQLite (unabhängig, dateibasiert) |
@@ -101,7 +101,7 @@ HHBKTendo Spielesammlung
 ├── database.py      Datenbankoperationen (SQLite, CRUD)
 ├── minimax.py       Generischer MiniMax + Alpha-Beta-Pruning (spielunabhängig)
 ├── pawn_chess.py    Spiellogik Bauernschach (Brett, Züge, Bewertung)
-├── tictactoe.py     Spiellogik Tic-Tac-Toe 4-gewinnt (Brett, Züge, Bewertung)
+├── tictactoe.py     Spiellogik Tic-Tac-Toe (3×3, 3 in einer Reihe, Brett, Züge, Bewertung)
 └── games.db         SQLite-Datenbankdatei (auto-generiert beim Start)
 ```
 
@@ -177,10 +177,10 @@ score = Σ (Figurwert + Fortschritt × 2 + Zentrumbonus) für KI-Figuren
 
 ---
 
-### 4.2 Spiel: Tic-Tac-Toe (4 gewinnt) (PF-M01)
+### 4.2 Spiel: Tic-Tac-Toe (PF-M01)
 
 **Brettkonfiguration:**
-- 6×6 Felder, leer zu Spielbeginn
+- 3×3 Felder, leer zu Spielbeginn
 - Repräsentation: `board[row][col]` ∈ {HUMAN=1, AI=−1, EMPTY=0}
 
 **Spielregeln:**
@@ -191,18 +191,17 @@ score = Σ (Figurwert + Fortschritt × 2 + Zentrumbonus) für KI-Figuren
 
 | Zustand | Ergebnis |
 |---------|---------|
-| 4 in einer Reihe (horizontal) | Erster Spieler gewinnt |
-| 4 in einer Spalte (vertikal) | Erster Spieler gewinnt |
-| 4 diagonal | Erster Spieler gewinnt |
-| Brett voll, kein Gewinner | Unentschieden |
+| 3 in einer Reihe (horizontal) | Erster Spieler gewinnt |
+| 3 in einer Spalte (vertikal) | Erster Spieler gewinnt |
+| 3 diagonal | Erster Spieler gewinnt |
+| Brett voll (9 Felder), kein Gewinner | Unentschieden |
 
 **Bewertungsfunktion:**
 ```
-score = (3er-Linien KI) × 50 − (3er-Linien Mensch) × 50
-      + (2er-Linien KI) × 10 − (2er-Linien Mensch) × 10
-      + Zentrumsnähe-Bonus
+score = Zentrumsnähe-Bonus für KI − Zentrumsnähe-Bonus für Mensch
 ```
-Nur offene Linien (ohne gegnerische Steine im Fenster) werden gezählt.
+Auf dem 3×3-Brett ist MiniMax bereits ab Tiefe 9 vollständig (perfektes Spiel);
+die Bewertungsfunktion dient nur als Blatt-Heuristik bei begrenzter Suchtiefe.
 
 ---
 
@@ -287,6 +286,7 @@ minimax(board, depth, is_maximizing, α=−∞, β=+∞):
 | NF-06 (LN5040) | Wiederverwendbare Software | Generischer MiniMax, spielunabhängige Schnittstelle |
 | NF-07 (LN5050) | Intuitive Bedienung | Einheitliches Design, klare Labels, Statusanzeige |
 | NF-08 (LN5060) | Brand Identity | Dunkles Farbschema (HHBKTendo CI), konsistentes Layout |
+| NF-09 | Plattformkompatibilität | Buttons als `tk.Label` mit Bindings implementiert, da macOS den `bg`/`fg`-Parameter von `tk.Button` ignoriert |
 
 ---
 
@@ -359,9 +359,10 @@ Startbildschirm (Login/Register)
 - Schwarze Figur: dunkler Kreis (`#1a1a2e`) mit ♟-Symbol, helle Kontur
 - Ausgewählte Figur: rotes Feld, gültige Züge: grünes Feld
 
-**Tic-Tac-Toe:**
-- X (Mensch): hellblau (`#64b5f6`), dicke Linien
-- O (KI): rot (`#ef5350`), dicke Ovallinie
+**Tic-Tac-Toe (3×3):**
+- Canvas: 420×420 px (3 Felder à 140 px)
+- X (Mensch): hellblau (`#64b5f6`), dicke Linien (skaliert mit Zellgröße)
+- O (KI): rot (`#ef5350`), dicke Ovallinie (skaliert mit Zellgröße)
 
 ### 8.3 Farbschema (CI)
 
@@ -384,7 +385,7 @@ Das gesamte Laufzeit-Zustand der Anwendung ist im Dictionary `app_state` in `mai
 | `app_state["language"]` | str | Aktuelle Sprache ('en'/'de') |
 | `app_state["current_screen"]` | tk.Frame | Aktuell angezeigter Screen |
 | `app_state["game"]` | str | Aktives Spiel ('pawn_chess'/'tictactoe') |
-| `app_state["board"]` | list[list[int]] | Aktuelles 6×6-Spielfeld |
+| `app_state["board"]` | list[list[int]] | Aktuelles Spielfeld (6×6 Bauernschach / 3×3 TTT) |
 | `app_state["difficulty"]` | int | Suchtiefe 1–5 |
 | `app_state["human_turn"]` | bool | True = Mensch am Zug |
 | `app_state["selected"]` | tuple\|None | Ausgewählte Figur (Bauernschach) |
@@ -449,9 +450,9 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 | TC-06 | Bauernschach – Zug auf eigene Figur | Zug wird verweigert |
 | TC-07 | Bauernschach – Diagonales Schlagen | Gegnerischer Bauer wird entfernt |
 | TC-08 | Bauernschach – Bauer erreicht Grundlinie | Spiel endet mit korrektem Gewinner |
-| TC-09 | TTT – 4 in einer Reihe (horizontal) | Spiel endet, Gewinner korrekt |
-| TC-10 | TTT – 4 in einer Diagonale | Spiel endet, Gewinner korrekt |
-| TC-11 | TTT – Volles Brett ohne Gewinner | Unentschieden angezeigt |
+| TC-09 | TTT – 3 in einer Reihe (horizontal) | Spiel endet, Gewinner korrekt |
+| TC-10 | TTT – 3 in einer Diagonale | Spiel endet, Gewinner korrekt |
+| TC-11 | TTT – Alle 9 Felder belegt ohne Gewinner | Unentschieden angezeigt |
 | TC-12 | KI-Zug bei Suchtiefe 5 | KI zieht innerhalb 45 Sekunden |
 | TC-13 | Spielabbruch | Bestätigungsdialog, Rückkehr ins Hauptmenü |
 | TC-14 | Bestenliste anzeigen | Korrekte Sortierung nach Siegen |
@@ -506,5 +507,14 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 | 5 | Englischsprachiger Pitch | Ausstehend |
 
 ---
+
+---
+
+## Änderungshistorie
+
+| Version | Datum | Änderung |
+|---------|-------|----------|
+| 1.0 | 2026-04-20 | Erstversion |
+| 1.1 | 2026-04-21 | Tic-Tac-Toe korrigiert: 3×3-Brett, Gewinnbedingung 3 in einer Reihe (statt 6×6 / 4 in Reihe); PF-M03 angepasst; Bewertungsfunktion vereinfacht; NF-09 (macOS-Kompatibilität) ergänzt; Testfälle TC-09–TC-11 aktualisiert |
 
 *Pflichtenheft erstellt auf Basis des Lastenhefts Strategiespiele V13a, HHBK Tendo Research Center, 2026.*

@@ -171,16 +171,19 @@ def clear_frame(frame):
 
 
 def make_button(parent, text, command, width=18, bg=None, fg=None):
-    """Erstellt einen gestalteten Button."""
+    """Erstellt einen gestalteten Button (Label-basiert, funktioniert auf macOS)."""
     bg = bg or COLORS["btn_bg"]
     fg = fg or COLORS["btn_text"]
-    btn = tk.Button(
-        parent, text=text, command=command,
+    hover_bg = COLORS["btn_hover"] if bg == COLORS["btn_bg"] else bg
+    btn = tk.Label(
+        parent, text=text,
         bg=bg, fg=fg, font=("Segoe UI", 11, "bold"),
-        relief="flat", cursor="hand2", width=width,
-        activebackground=COLORS["btn_hover"], activeforeground=fg,
-        pady=6
+        cursor="hand2", width=width,
+        pady=6, padx=8
     )
+    btn.bind("<Button-1>", lambda e: command())
+    btn.bind("<Enter>",    lambda e: btn.config(bg=hover_bg))
+    btn.bind("<Leave>",    lambda e: btn.config(bg=bg))
     return btn
 
 
@@ -290,12 +293,13 @@ def build_login_screen(root, frame):
         app_state["language"] = "de" if app_state["language"] == "en" else "en"
         show_screen(root, build_login_screen)
 
-    tk.Button(
+    lang_btn = tk.Label(
         frame, text="DE / EN",
-        command=toggle_lang,
         bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
-        relief="flat", font=("Segoe UI", 9), cursor="hand2"
-    ).pack(pady=10)
+        font=("Segoe UI", 9), cursor="hand2", padx=6, pady=4
+    )
+    lang_btn.bind("<Button-1>", lambda e: toggle_lang())
+    lang_btn.pack(pady=10)
 
 
 # ─────────────────────────────────────────────
@@ -326,9 +330,13 @@ def build_main_menu(root, frame):
             database.update_user_language(user["id"], app_state["language"])
         show_screen(root, build_main_menu)
 
-    tk.Button(header, text="DE/EN", command=toggle_lang,
-              bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
-              relief="flat", font=("Segoe UI", 9), cursor="hand2").pack(side="right", padx=5)
+    lang_btn = tk.Label(
+        header, text="DE/EN",
+        bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
+        font=("Segoe UI", 9), cursor="hand2", padx=6, pady=4
+    )
+    lang_btn.bind("<Button-1>", lambda e: toggle_lang())
+    lang_btn.pack(side="right", padx=5)
 
     if user:
         make_button(header, t("logout"), do_logout, width=10,
