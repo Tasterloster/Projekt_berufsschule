@@ -2,7 +2,7 @@
 main.py - HHBKTendo Spielesammlung - Hauptprogramm
 GUI mit tkinter, prozedural programmiert (LN5000, LN5001)
 
-Spiele: Bauernschach, Tic-Tac-Toe (4 gewinnt)
+Spiele: Bauernschach, Tic-Tac-Toe
 KI: MiniMax mit Alpha-Beta-Pruning
 """
 
@@ -37,25 +37,35 @@ app_state = {
 # Farben & Design (CI/Branding LN5060)
 # ─────────────────────────────────────────────
 COLORS = {
-    "bg_dark":      "#1a1a2e",
-    "bg_mid":       "#16213e",
-    "bg_card":      "#0f3460",
-    "accent":       "#e94560",
-    "accent2":      "#533483",
-    "text_light":   "#eaeaea",
-    "text_dim":     "#a0a0b0",
-    "white_piece":  "#f0d9b5",
-    "black_piece":  "#2c2c2c",
-    "board_light":  "#f0d9b5",
-    "board_dark":   "#b58863",
-    "highlight":    "#e94560",
-    "valid_move":   "#4caf50",
-    "btn_bg":       "#e94560",
-    "btn_hover":    "#c73652",
-    "btn_text":     "#ffffff",
-    "win":          "#4caf50",
-    "lose":         "#e94560",
-    "draw":         "#ff9800",
+    "bg_dark":           "#1a1a2e",
+    "bg_mid":            "#16213e",
+    "bg_card":           "#0f3460",
+    "accent":            "#e94560",
+    "accent2":           "#533483",
+    "text_light":        "#eaeaea",
+    "text_dim":          "#a0a0b0",
+    # Spielfiguren: deutlich verschieden von den Brettfarben
+    "white_piece":       "#ffffff",   # Reines Weiß mit dunkler Kontur
+    "white_piece_out":   "#222222",   # Kontur Weiß-Figur
+    "black_piece":       "#1a1a2e",   # Sehr dunkles Blau
+    "black_piece_out":   "#aaaaaa",   # Helle Kontur Schwarz-Figur
+    # Brett: beige/braun – jetzt klar von Figuren getrennt
+    "board_light":       "#eecc99",
+    "board_dark":        "#8b5e3c",
+    "highlight":         "#e94560",
+    "highlight_out":     "#ff8080",
+    "valid_move":        "#2e7d32",
+    "valid_move_out":    "#81c784",
+    # TTT-Symbole
+    "ttt_x":             "#64b5f6",   # Hellblau für X (Mensch)
+    "ttt_o":             "#ef5350",   # Rot für O (KI)
+    # Buttons & Status
+    "btn_bg":            "#e94560",
+    "btn_hover":         "#c73652",
+    "btn_text":          "#ffffff",
+    "win":               "#4caf50",
+    "lose":              "#e94560",
+    "draw":              "#ff9800",
 }
 
 # ─────────────────────────────────────────────
@@ -72,7 +82,7 @@ TEXTS = {
         "main_menu": "Main Menu",
         "select_game": "Select a Game",
         "pawn_chess": "Pawn Chess",
-        "tictactoe": "Tic-Tac-Toe (4 in a Row)",
+        "tictactoe": "Tic-Tac-Toe",
         "difficulty": "Difficulty",
         "easy": "Easy",
         "medium": "Medium",
@@ -112,7 +122,7 @@ TEXTS = {
         "main_menu": "Hauptmenü",
         "select_game": "Spiel auswählen",
         "pawn_chess": "Bauernschach",
-        "tictactoe": "Tic-Tac-Toe (4 gewinnt)",
+        "tictactoe": "Tic-Tac-Toe",
         "difficulty": "Schwierigkeit",
         "easy": "Leicht",
         "medium": "Mittel",
@@ -470,6 +480,7 @@ def show_rules(root, game):
 # SPIELSCREEN
 # ─────────────────────────────────────────────
 CELL_SIZE = 72
+TTT_CELL_SIZE = 140   # größere Zellen für das kleinere 3x3-Brett
 PIECE_RADIUS = 26
 
 board_canvas = None
@@ -534,7 +545,10 @@ def build_game_screen(root, frame):
     status_label.pack(pady=(12, 6))
 
     # Spielfeld-Canvas
-    canvas_size = CELL_SIZE * 6
+    if game == "tictactoe":
+        canvas_size = TTT_CELL_SIZE * ttt.BOARD_SIZE
+    else:
+        canvas_size = CELL_SIZE * 6
     board_canvas = tk.Canvas(frame, width=canvas_size, height=canvas_size,
                               bg=COLORS["bg_dark"], highlightthickness=0)
     board_canvas.pack(pady=10)
@@ -565,12 +579,15 @@ def draw_board():
 
     valid_targets = set((m[2], m[3]) for m in valid_moves) if game == "pawn_chess" else set()
 
-    for row in range(6):
-        for col in range(6):
-            x0 = col * CELL_SIZE
-            y0 = row * CELL_SIZE
-            x1 = x0 + CELL_SIZE
-            y1 = y0 + CELL_SIZE
+    cs = TTT_CELL_SIZE if game == "tictactoe" else CELL_SIZE
+    board_size = ttt.BOARD_SIZE if game == "tictactoe" else 6
+
+    for row in range(board_size):
+        for col in range(board_size):
+            x0 = col * cs
+            y0 = row * cs
+            x1 = x0 + cs
+            y1 = y0 + cs
 
             # Feldfarbe
             if (row + col) % 2 == 0:
@@ -579,52 +596,101 @@ def draw_board():
                 cell_color = COLORS["board_dark"]
 
             # Ausgewähltes Feld hervorheben
-            if selected == (row, col):
+            is_selected = (selected == (row, col))
+            if is_selected:
                 cell_color = COLORS["highlight"]
 
             # Gültige Züge markieren
-            if game == "pawn_chess" and (row, col) in valid_targets:
+            is_valid_target = game == "pawn_chess" and (row, col) in valid_targets
+            if is_valid_target:
                 cell_color = COLORS["valid_move"]
 
+            # Kontur: normale Felder bekommen eine dünne Trennlinie
+            border_color = "#444444"
+            border_width = 1
+            if is_selected:
+                border_color = COLORS["highlight_out"]
+                border_width = 3
+            elif is_valid_target:
+                border_color = COLORS["valid_move_out"]
+                border_width = 3
+
             board_canvas.create_rectangle(x0, y0, x1, y1,
-                                           fill=cell_color, outline="")
+                                           fill=cell_color,
+                                           outline=border_color,
+                                           width=border_width)
 
             # Figuren zeichnen
             cell = board[row][col]
-            cx = x0 + CELL_SIZE // 2
-            cy = y0 + CELL_SIZE // 2
+            cx = x0 + cs // 2
+            cy = y0 + cs // 2
             r = PIECE_RADIUS
 
             if game == "pawn_chess":
                 if cell == pc.WHITE:
+                    # Weißer Bauer: reines Weiß, dunkle Kontur → sichtbar auf jedem Feld
                     _draw_piece(board_canvas, cx, cy, r,
-                                COLORS["white_piece"], "#888")
+                                COLORS["white_piece"], COLORS["white_piece_out"])
+                    # Kleines "W"-Symbol zur Unterscheidung
+                    board_canvas.create_text(cx, cy, text="♙",
+                                              fill=COLORS["white_piece_out"],
+                                              font=("Arial", 22, "bold"))
                 elif cell == pc.BLACK:
+                    # Schwarzer Bauer: dunkles Blau, helle Kontur → sichtbar auf jedem Feld
                     _draw_piece(board_canvas, cx, cy, r,
-                                COLORS["black_piece"], "#555")
+                                COLORS["black_piece"], COLORS["black_piece_out"])
+                    board_canvas.create_text(cx, cy, text="♟",
+                                              fill=COLORS["black_piece_out"],
+                                              font=("Arial", 22, "bold"))
 
             elif game == "tictactoe":
                 if cell == ttt.HUMAN:
-                    # X zeichnen
-                    board_canvas.create_line(cx - 18, cy - 18, cx + 18, cy + 18,
-                                              fill=COLORS["white_piece"], width=4)
-                    board_canvas.create_line(cx + 18, cy - 18, cx - 18, cy + 18,
-                                              fill=COLORS["white_piece"], width=4)
-                elif cell == ttt.AI:
-                    # O zeichnen
-                    board_canvas.create_oval(cx - 20, cy - 20, cx + 20, cy + 20,
-                                              outline=COLORS["black_piece"], width=4)
+                    # X: hellblau, breite Linien, dunkle Umrahmung → gut lesbar
+                    d = cs * 20 // CELL_SIZE
+                    lw_out = max(4, cs * 6 // CELL_SIZE)
+                    lw_in  = max(2, cs * 3 // CELL_SIZE)
+                    for dx, dy in [(1, 1), (-1, -1)]:
+                        board_canvas.create_line(
+                            cx - d * dx, cy - d * dy,
+                            cx + d * dx, cy + d * dy,
+                            fill="#1a237e", width=lw_out)
+                    for dx, dy in [(1, -1), (-1, 1)]:
+                        board_canvas.create_line(
+                            cx - d * dx, cy - d * dy,
+                            cx + d * dx, cy + d * dy,
+                            fill="#1a237e", width=lw_out)
+                    # Heller Vordergrund
+                    for dx, dy in [(1, 1), (-1, -1)]:
+                        board_canvas.create_line(
+                            cx - d * dx, cy - d * dy,
+                            cx + d * dx, cy + d * dy,
+                            fill=COLORS["ttt_x"], width=lw_in)
+                    for dx, dy in [(1, -1), (-1, 1)]:
+                        board_canvas.create_line(
+                            cx - d * dx, cy - d * dy,
+                            cx + d * dx, cy + d * dy,
+                            fill=COLORS["ttt_x"], width=lw_in)
 
-                # Klick-Markierung bei TTT
-                if game == "tictactoe" and cell == ttt.EMPTY:
-                    board_canvas.create_rectangle(x0 + 2, y0 + 2, x1 - 2, y1 - 2,
-                                                   fill="", outline="", tags=f"cell_{row}_{col}")
+                elif cell == ttt.AI:
+                    # O: rot, breite Kontur, dunkle Schatten-Oval → gut lesbar
+                    r_o   = cs * 22 // CELL_SIZE
+                    lw_out = max(4, cs * 6 // CELL_SIZE)
+                    lw_in  = max(2, cs * 3 // CELL_SIZE)
+                    board_canvas.create_oval(cx - r_o, cy - r_o, cx + r_o, cy + r_o,
+                                              outline="#7f0000", width=lw_out)
+                    board_canvas.create_oval(cx - r_o, cy - r_o, cx + r_o, cy + r_o,
+                                              outline=COLORS["ttt_o"], width=lw_in)
 
 
 def _draw_piece(canvas, cx, cy, r, fill, outline):
-    """Zeichnet eine runde Spielfigur."""
+    """Zeichnet eine runde Spielfigur mit Schatten-Effekt für Tiefenwirkung."""
+    # Schatten (leicht versetzt)
+    canvas.create_oval(cx - r + 3, cy - r + 3, cx + r + 3, cy + r + 3,
+                        fill="#111111",
+                        outline="")
+    # Haupt-Oval
     canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                        fill=fill, outline=outline, width=2)
+                        fill=fill, outline=outline, width=3)
 
 
 def on_board_click(event):
@@ -634,13 +700,15 @@ def on_board_click(event):
     if not app_state["human_turn"]:
         return
 
-    col = event.x // CELL_SIZE
-    row = event.y // CELL_SIZE
-
-    if not (0 <= row < 6 and 0 <= col < 6):
-        return
-
     game = app_state["game"]
+    cs = TTT_CELL_SIZE if game == "tictactoe" else CELL_SIZE
+    board_size = ttt.BOARD_SIZE if game == "tictactoe" else 6
+
+    col = event.x // cs
+    row = event.y // cs
+
+    if not (0 <= row < board_size and 0 <= col < board_size):
+        return
 
     if game == "pawn_chess":
         handle_pawn_chess_click(row, col)
