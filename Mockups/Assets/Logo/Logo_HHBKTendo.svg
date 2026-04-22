@@ -1,0 +1,253 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 200" width="560" height="200">
+  <defs>
+    <!-- Google Fonts: Orbitron -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&amp;family=Exo+2:wght@300;400;600&amp;display=swap');
+    </style>
+
+    <!-- Backgrounds -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d0f1a"/>
+      <stop offset="100%" style="stop-color:#1a2040"/>
+    </linearGradient>
+
+    <!-- Controller body gradient -->
+    <linearGradient id="controllerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e2850"/>
+      <stop offset="100%" style="stop-color:#1a2040"/>
+    </linearGradient>
+
+    <!-- Hot Pink glow filter -->
+    <filter id="pinkGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-color="#e8365d" flood-opacity="0.6" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Cyan glow filter -->
+    <filter id="cyanGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-color="#00d4ff" flood-opacity="0.5" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Purple glow -->
+    <filter id="purpleGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feFlood flood-color="#6c3fc5" flood-opacity="0.6" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Text glow (hot pink) -->
+    <filter id="textGlowPink" x="-10%" y="-40%" width="120%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feFlood flood-color="#e8365d" flood-opacity="0.7" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Text glow (cyan) -->
+    <filter id="textGlowCyan" x="-10%" y="-40%" width="120%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feFlood flood-color="#00d4ff" flood-opacity="0.6" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Cyan gradient for BLITZ -->
+    <linearGradient id="blitzGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="100%" style="stop-color:#6c3fc5"/>
+    </linearGradient>
+
+    <!-- Scan line pattern -->
+    <pattern id="scanlines" x="0" y="0" width="1" height="3" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="1" height="1" fill="#00d4ff" opacity="0.03"/>
+    </pattern>
+
+    <!-- Controller stroke gradient -->
+    <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8365d"/>
+      <stop offset="50%" style="stop-color:#6c3fc5"/>
+      <stop offset="100%" style="stop-color:#00d4ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="560" height="200" rx="16" fill="url(#bgGrad)"/>
+  <!-- Scanline overlay -->
+  <rect width="560" height="200" rx="16" fill="url(#scanlines)"/>
+
+  <!-- Subtle board grid (very faint) -->
+  <g opacity="0.04" stroke="#00d4ff" stroke-width="0.5">
+    <line x1="0" y1="50" x2="150" y2="50"/>
+    <line x1="0" y1="100" x2="150" y2="100"/>
+    <line x1="0" y1="150" x2="150" y2="150"/>
+    <line x1="30" y1="0" x2="30" y2="200"/>
+    <line x1="60" y1="0" x2="60" y2="200"/>
+    <line x1="90" y1="0" x2="90" y2="200"/>
+    <line x1="120" y1="0" x2="120" y2="200"/>
+  </g>
+
+  <!-- Border accent line (top) -->
+  <line x1="16" y1="0" x2="544" y2="0" stroke="url(#strokeGrad)" stroke-width="2.5" opacity="0.8"/>
+  <!-- Border accent line (bottom) -->
+  <line x1="16" y1="200" x2="544" y2="200" stroke="url(#strokeGrad)" stroke-width="2.5" opacity="0.8"/>
+
+  <!-- ===== CONTROLLER ===== -->
+  <g transform="translate(18, 24)">
+
+    <!-- Outer glow halo behind controller -->
+    <ellipse cx="57" cy="55" rx="52" ry="40" fill="#6c3fc5" opacity="0.07"/>
+
+    <!-- Controller body -->
+    <path d="M16,30 Q7,30 4,44 L0,76 Q-1,92 10,93 Q19,93 25,80 L31,70 L83,70 L89,80 Q95,93 104,93 Q115,92 114,76 L110,44 Q107,30 98,30 Z"
+          fill="url(#controllerGrad)"
+          stroke="url(#strokeGrad)"
+          stroke-width="1.8"/>
+
+    <!-- Inner panel -->
+    <rect x="29" y="34" width="56" height="28" rx="8"
+          fill="#0d0f1a" stroke="#1e2850" stroke-width="1"/>
+
+    <!-- Left grip inner curve -->
+    <path d="M16,30 Q8,30 5,44 L1,74 Q0,88 10,91 L14,85 Q8,82 8,74 L12,44 Q13,35 18,32 Z"
+          fill="#1e2850" opacity="0.5"/>
+
+    <!-- Right grip inner curve -->
+    <path d="M98,30 Q106,30 109,44 L113,74 Q114,88 104,91 L100,85 Q106,82 106,74 L102,44 Q101,35 96,32 Z"
+          fill="#1e2850" opacity="0.5"/>
+
+    <!-- ── D-PAD (left) ── -->
+    <g filter="url(#cyanGlow)">
+      <!-- Vertical -->
+      <rect x="16" y="38" width="8" height="22" rx="2.5" fill="#00d4ff"/>
+      <!-- Horizontal -->
+      <rect x="12" y="43" width="16" height="8" rx="2.5" fill="#00d4ff"/>
+      <!-- Center -->
+      <circle cx="20" cy="49" r="3" fill="#ffffff" opacity="0.9"/>
+    </g>
+
+    <!-- ── BUTTONS (right) - chess symbols ── -->
+    <!-- TOP (Y) — Hot Pink / Queen -->
+    <circle cx="86" cy="39" r="5.5" fill="#e8365d" filter="url(#pinkGlow)"/>
+    <text x="86" y="43" font-size="7" fill="#ffffff" text-anchor="middle" font-family="serif">♛</text>
+
+    <!-- LEFT (X) — Purple / Rook -->
+    <circle cx="77" cy="49" r="5.5" fill="#6c3fc5" filter="url(#purpleGlow)"/>
+    <text x="77" y="53" font-size="7" fill="#ffffff" text-anchor="middle" font-family="serif">♜</text>
+
+    <!-- RIGHT (B) — Cyan / Bishop -->
+    <circle cx="95" cy="49" r="5.5" fill="#00d4ff" filter="url(#cyanGlow)"/>
+    <text x="95" y="53" font-size="7" fill="#0d0f1a" text-anchor="middle" font-family="serif">♗</text>
+
+    <!-- BOTTOM (A) — Pink lighter / Pawn -->
+    <circle cx="86" cy="59" r="5.5" fill="#e8365d" opacity="0.75" filter="url(#pinkGlow)"/>
+    <text x="86" y="63" font-size="7" fill="#ffffff" text-anchor="middle" font-family="serif">♟</text>
+
+    <!-- ── CENTER MENU BUTTONS ── -->
+    <rect x="46" y="44" width="9" height="5" rx="2.5" fill="#1e2850" stroke="#6c3fc5" stroke-width="0.8"/>
+    <rect x="59" y="44" width="9" height="5" rx="2.5" fill="#1e2850" stroke="#6c3fc5" stroke-width="0.8"/>
+
+    <!-- ── ANALOG STICKS ── -->
+    <!-- Left stick -->
+    <circle cx="38" cy="58" r="7" fill="#1e2850" stroke="#6c3fc5" stroke-width="1.2"/>
+    <circle cx="38" cy="58" r="4" fill="#0d0f1a"/>
+    <circle cx="38" cy="58" r="1.5" fill="#6c3fc5" opacity="0.8"/>
+
+    <!-- Right stick -->
+    <circle cx="76" cy="58" r="7" fill="#1e2850" stroke="#6c3fc5" stroke-width="1.2"/>
+    <circle cx="76" cy="58" r="4" fill="#0d0f1a"/>
+    <circle cx="76" cy="58" r="1.5" fill="#6c3fc5" opacity="0.8"/>
+
+    <!-- ── TOP BUMPERS ── -->
+    <path d="M22,31 Q31,25 47,25 L47,32 Q31,32 23,34 Z"
+          fill="#1e2850" stroke="#e8365d" stroke-width="0.8" opacity="0.9"/>
+    <path d="M92,31 Q83,25 67,25 L67,32 Q83,32 91,34 Z"
+          fill="#1e2850" stroke="#e8365d" stroke-width="0.8" opacity="0.9"/>
+
+    <!-- Bumper center hot pink line -->
+    <line x1="47" y1="25" x2="67" y2="25" stroke="#e8365d" stroke-width="2.5"
+          stroke-linecap="round" filter="url(#pinkGlow)"/>
+
+    <!-- Small LED indicator dots -->
+    <circle cx="47" cy="38" r="2" fill="#e8365d" opacity="0.9" filter="url(#pinkGlow)"/>
+    <circle cx="54" cy="38" r="2" fill="#6c3fc5" opacity="0.9"/>
+    <circle cx="61" cy="38" r="2" fill="#00d4ff" opacity="0.9" filter="url(#cyanGlow)"/>
+    <circle cx="68" cy="38" r="2" fill="#e8365d" opacity="0.9" filter="url(#pinkGlow)"/>
+
+  </g>
+
+  <!-- ===== LOGO TEXT ===== -->
+
+  <!-- BOARD — White with subtle pink glow -->
+  <text x="162" y="104"
+        font-family="'Orbitron', 'Arial Black', sans-serif"
+        font-size="54" font-weight="900"
+        fill="#ffffff"
+        filter="url(#textGlowPink)"
+        letter-spacing="2">BOARD</text>
+
+  <!-- BLITZ — Cyan-to-Purple gradient with cyan glow -->
+  <text x="162" y="158"
+        font-family="'Orbitron', 'Arial Black', sans-serif"
+        font-size="54" font-weight="900"
+        fill="url(#blitzGrad)"
+        filter="url(#textGlowCyan)"
+        letter-spacing="2">BLITZ</text>
+
+  <!-- Tagline — Exo 2 / Slate Blue -->
+  <text x="164" y="177"
+        font-family="'Exo 2', 'Arial', sans-serif"
+        font-size="10.5" font-weight="300"
+        fill="#8a9cc0"
+        letter-spacing="3.5">CLASSIC GAMES · MOBILE FIRST</text>
+
+  <!-- Separator line between BOARD and BLITZ (hot pink) -->
+  <line x1="162" y1="115" x2="510" y2="115"
+        stroke="#e8365d" stroke-width="1.5" opacity="0.4"
+        stroke-dasharray="4 3"/>
+
+  <!-- ===== LIGHTNING BOLT (right accent) ===== -->
+  <g transform="translate(490, 62)" filter="url(#pinkGlow)">
+    <polygon points="18,0 7,22 16,22 5,44 24,14 14,14 24,0"
+             fill="#e8365d"/>
+  </g>
+
+  <!-- Decorative chess mini-board bottom right -->
+  <g transform="translate(500, 148)" opacity="0.3">
+    <rect x="0"  y="0"  width="10" height="10" fill="#e8365d"/>
+    <rect x="10" y="0"  width="10" height="10" fill="#0d0f1a"/>
+    <rect x="0"  y="10" width="10" height="10" fill="#0d0f1a"/>
+    <rect x="10" y="10" width="10" height="10" fill="#00d4ff"/>
+    <rect x="20" y="0"  width="10" height="10" fill="#6c3fc5"/>
+    <rect x="30" y="0"  width="10" height="10" fill="#0d0f1a"/>
+    <rect x="20" y="10" width="10" height="10" fill="#0d0f1a"/>
+    <rect x="30" y="10" width="10" height="10" fill="#e8365d"/>
+  </g>
+
+  <!-- Corner bracket top-left -->
+  <path d="M8,8 L8,26 M8,8 L26,8" stroke="#00d4ff" stroke-width="2" fill="none"
+        stroke-linecap="round" opacity="0.6" filter="url(#cyanGlow)"/>
+  <!-- Corner bracket bottom-right -->
+  <path d="M552,192 L552,174 M552,192 L534,192" stroke="#e8365d" stroke-width="2" fill="none"
+        stroke-linecap="round" opacity="0.6" filter="url(#pinkGlow)"/>
+</svg>
