@@ -7,6 +7,7 @@ Ausführen:
     python3 -m pytest test_all.py -v  (falls pytest installiert)
 """
 
+import json
 import math
 import os
 import tempfile
@@ -656,6 +657,198 @@ class TestAuthWithDB(DBTestCase):
         auth.set_current_user(user)
         self.assertTrue(auth.is_logged_in())
         self.assertEqual(auth.get_current_user()["username"], "diana")
+
+
+# ═══════════════════════════════════════════════════════════
+# 7  SESSION / AUTO-LOGIN  (auth.py – save/load/clear_session)
+# ═══════════════════════════════════════════════════════════
+class TestSession(DBTestCase):
+    """Tests für Session-Persistenz (keep_logged_in, PF-M08)."""
+
+    def setUp(self):
+        super().setUp()
+        # Eigene Temp-Datei für session.json → kein Seiteneffekt auf Disk
+        self._sess_fd, self._sess_path = tempfile.mkstemp(suffix=".json")
+        os.close(self._sess_fd)
+        os.unlink(self._sess_path)   # Nur Pfad reservieren, Datei noch nicht anlegen
+        self._sess_patch = patch.object(auth, "SESSION_FILE", self._sess_path)
+        self._sess_patch.start()
+
+    def tearDown(self):
+        self._sess_patch.stop()
+        try:
+            if os.path.exists(self._sess_path):
+                os.unlink(self._sess_path)
+        except OSError:
+            pass
+        super().tearDown()
+
+    def test_save_session_creates_file(self):
+        """save_session legt eine Session-Datei an."""
+        uid = database.register_user("hans", "h:abc")
+        auth.save_session(uid)
+        self.assertTrue(os.path.exists(self._sess_path))
+
+    def test_save_and_load_session_returns_correct_user(self):
+        """Gespeicherte Session laden gibt den richtigen Benutzer zurück."""
+        uid = database.register_user("anna", "h:abc")
+        auth.save_session(uid)
+        loaded = auth.load_session()
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded["id"], uid)
+        self.assertEqual(loaded["username"], "anna")
+
+    def test_load_session_no_file_returns_none(self):
+        """load_session gibt None zurück wenn keine Session-Datei vorhanden ist."""
+        self.assertIsNone(auth.load_session())
+
+    def test_load_session_unknown_user_id_returns_none(self):
+        """load_session gibt None zurück wenn die gespeicherte User-ID nicht existiert."""
+        with open(self._sess_path, "w") as f:
+            json.dump({"user_id": 9999}, f)
+        self.assertIsNone(auth.load_session())
+
+    def test_load_session_corrupt_json_returns_none(self):
+        """load_session gibt None zurück bei beschädigter Session-Datei."""
+        with open(self._sess_path, "w") as f:
+            f.write("{kein gültiges json{{")
+        self.assertIsNone(auth.load_session())
+
+    def test_load_session_empty_file_returns_none(self):
+        """load_session gibt None zurück bei leerer Session-Datei."""
+        open(self._sess_path, "w").close()
+        self.assertIsNone(auth.load_session())
+
+    def test_clear_session_removes_file(self):
+        """clear_session löscht die Session-Datei."""
+        uid = database.register_user("berta", "h:abc")
+        auth.save_session(uid)
+        self.assertTrue(os.path.exists(self._sess_path))
+        auth.clear_session()
+        self.assertFalse(os.path.exists(self._sess_path))
+
+    def test_clear_session_without_file_does_not_raise(self):
+        """clear_session wirft keine Exception wenn keine Session-Datei vorhanden ist."""
+        self.assertFalse(os.path.exists(self._sess_path))
+        auth.clear_session()  # Darf keinen Fehler werfen
+
+    def test_logout_clears_session_file_and_current_user(self):
+        """logout() löscht die Session-Datei und setzt current_user auf None."""
+        uid = database.register_user("carla", "h:abc")
+        user = database.get_user_by_id(uid)
+        auth.set_current_user(user)
+        auth.save_session(uid)
+        self.assertTrue(os.path.exists(self._sess_path))
+
+        auth.logout()
+
+        self.assertFalse(os.path.exists(self._sess_path))
+        self.assertIsNone(auth.get_current_user())
+
+    def test_load_session_after_logout_returns_none(self):
+        """Nach logout() liefert load_session() None (Session wurde gelöscht)."""
+        uid = database.register_user("dieter", "h:abc")
+        auth.set_current_user(database.get_user_by_id(uid))
+        auth.save_session(uid)
+        auth.logout()
+        self.assertIsNone(auth.load_session())
+
+    def test_session_survives_simulated_app_restart(self):
+        """Benutzer bleibt nach simuliertem Neustart eingeloggt (Auto-Login)."""
+        auth.register("eva", "pass1234")
+        ok, user = auth.login("eva", "pass1234")
+        self.assertTrue(ok)
+        auth.save_session(user["id"])
+        # App-Neustart simulieren: current_user zurücksetzen
+        auth.set_current_user(None)
+        self.assertIsNone(auth.get_current_user())
+        # Auto-Login: Session laden
+        restored = auth.load_session()
+        self.assertIsNotNone(restored)
+        auth.set_current_user(restored)
+        self.assertTrue(auth.is_logged_in())
+        self.assertEqual(auth.get_current_user()["username"], "eva")
+
+    def test_session_contains_user_language(self):
+        """Geladene Session enthält die Spracheinstellung des Benutzers."""
+        uid = database.register_user("finn", "h:abc", "de")
+        auth.save_session(uid)
+        loaded = auth.load_session()
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded["language"], "de")
+
+
+# ═══════════════════════════════════════════════════════════
+# 8  SPRACHEINSTELLUNG IN DER DATENBANK  (PF-K01, PF-K02, LD4230)
+# ═══════════════════════════════════════════════════════════
+class TestLanguage(DBTestCase):
+
+    def test_register_default_language_is_en(self):
+        """Neu registrierter Benutzer hat Standardsprache 'en'."""
+        database.register_user("greta", "h:abc")
+        user = database.get_user_by_username("greta")
+        self.assertEqual(user["language"], "en")
+
+    def test_register_with_language_de(self):
+        """Benutzer kann mit Sprache 'de' angelegt werden."""
+        database.register_user("hugo", "h:abc", language="de")
+        user = database.get_user_by_username("hugo")
+        self.assertEqual(user["language"], "de")
+
+    def test_update_language_to_de(self):
+        """update_user_language speichert 'de' korrekt in der Datenbank."""
+        uid = database.register_user("ida", "h:abc")
+        database.update_user_language(uid, "de")
+        self.assertEqual(database.get_user_by_username("ida")["language"], "de")
+
+    def test_update_language_back_to_en(self):
+        """Spracheinstellung kann von 'de' zurück auf 'en' geändert werden."""
+        uid = database.register_user("jan", "h:abc", language="de")
+        database.update_user_language(uid, "en")
+        self.assertEqual(database.get_user_by_username("jan")["language"], "en")
+
+    def test_update_language_does_not_affect_other_users(self):
+        """Sprachänderung eines Benutzers beeinflusst andere Benutzer nicht."""
+        uid1 = database.register_user("karl", "h:a", language="en")
+        uid2 = database.register_user("lisa", "h:b", language="en")
+        database.update_user_language(uid1, "de")
+        self.assertEqual(database.get_user_by_username("lisa")["language"], "en")
+
+    def test_login_user_dict_contains_language_field(self):
+        """Nach dem Login enthält das zurückgegebene User-Dict das 'language'-Feld."""
+        auth.register("max", "pass1234")
+        ok, user = auth.login("max", "pass1234")
+        self.assertTrue(ok)
+        self.assertIn("language", user)
+
+    def test_login_returns_correct_default_language(self):
+        """Neu registrierter Benutzer hat nach Login Sprache 'en'."""
+        auth.register("nina", "pass1234")
+        _, user = auth.login("nina", "pass1234")
+        self.assertEqual(user["language"], "en")
+
+    def test_language_change_visible_after_relogin(self):
+        """Geänderte Sprache bleibt nach erneutem Login erhalten."""
+        auth.register("otto", "pass1234")
+        _, user = auth.login("otto", "pass1234")
+        database.update_user_language(user["id"], "de")
+        # Erneuter Login simuliert App-Neustart
+        ok, user2 = auth.login("otto", "pass1234")
+        self.assertTrue(ok)
+        self.assertEqual(user2["language"], "de")
+
+    def test_auth_register_passes_language_to_db(self):
+        """auth.register speichert die Sprache in der Datenbank."""
+        auth.register("paula", "pass1234", language="de")
+        _, user = auth.login("paula", "pass1234")
+        self.assertEqual(user["language"], "de")
+
+    def test_get_user_by_id_contains_language(self):
+        """get_user_by_id gibt ebenfalls das 'language'-Feld zurück."""
+        uid = database.register_user("rudi", "h:abc", language="de")
+        user = database.get_user_by_id(uid)
+        self.assertIsNotNone(user)
+        self.assertEqual(user["language"], "de")
 
 
 # ─────────────────────────────────────────────
