@@ -488,13 +488,13 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 
 ### 13.1 Projektphasen (Wasserfallmodell)
 
-| Phase | Inhalt | Zeitraum |
-|-------|--------|---------|
-| Analysephase | Lastenheft lesen, Pflichtenheft erstellen, WBS, Zeitplan, Ressourcenplan | Woche 1 |
-| Design & Implementierung | Architektur, Datenbankdesign, Spiellogik, MiniMax, GUI | Woche 2 (Vollzeit) |
-| Test | Testprotokoll, Bugfixes, Abnahmetests | Woche 2 (Ende) |
-| Dokumentation | Benutzerdokumentation, Technische Doku, Präsentation, Pitch, CI-Konzept | Woche 3 |
-| Abschluss | Live-Demo, Präsentation, Fachgespräch (ca. 20+10 min) | Woche 3 (Ende) |
+| Phase | Inhalt | Zeitraum              |
+|-------|--------|-----------------------|
+| Analysephase | Lastenheft lesen, Pflichtenheft erstellen, WBS, Zeitplan, Ressourcenplan | Woche 1 (Vollzeit)    |
+| Design & Implementierung | Architektur, Datenbankdesign, Spiellogik, MiniMax, GUI | Woche 2 (Vollzeit)    |
+| Test | Testprotokoll, Bugfixes, Abnahmetests | Woche 2 (Mitte + Ende) |
+| Dokumentation | Benutzerdokumentation, Technische Doku, Präsentation, Pitch, CI-Konzept | Woche 2 (Ende)        |
+| Abschluss | Live-Demo, Präsentation, Fachgespräch (ca. 20+10 min) | Woche 3 (letzter Tag) |
 
 ### 13.2 Offene Punkte
 
