@@ -32,7 +32,7 @@ sudo apt install python3-tk
 1. Repository klonen oder als ZIP herunterladen und entpacken:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Tasterloster/Projekt_berufsschule.git
 cd Projekt_berufsschule
 ```
 

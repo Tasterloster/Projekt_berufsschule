@@ -3,7 +3,7 @@
 **Projekt:** Strategiespiele-Prototyp mit MiniMax-KI
 **Auftraggeber:** HHBK Tendo Research Center
 **Auftragnehmer:** Projektteam (Lernfeld 5)
-**Version:** 1.3
+**Version:** 1.4
 **Datum:** 2026-04-22
 **Status:** Entwurf
 
@@ -25,6 +25,7 @@
 12. [Dokumentations- und Konzeptanforderungen](#12-dokumentations--und-konzeptanforderungen)
 13. [Liefergegenstände](#13-liefergegenstände)
 14. [Projektplanung](#14-projektplanung)
+15. [Design und Corporate Identity](#15-design-und-corporate-identity)
 
 ---
 
@@ -556,9 +557,237 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 
 ---
 
+## 15 Design und Corporate Identity
+
+### 15.1 Markenidentität (Brand Identity)
+
+HHBKTendo positioniert sich als modernes, technologiegetriebenes Spielestudio mit einem klaren Fokus auf algorithmische KI. Das visuelle Erscheinungsbild soll diesen Anspruch transportieren: **präzise, dunkel, modern** – wie die Oberfläche eines High-End-Gaming-Setups. Die Farbwelt orientiert sich bewusst an professioneller Gaming-Ästhetik und hebt sich damit von den pastelligen UI-Konventionen klassischer Business-Software ab.
+
+**Mission:** Strategiespiele mit echter KI-Herausforderung für ein internationales Publikum zugänglich machen.
+
+**Vision:** HHBKTendo als führende Marke für algorithmisch gestützte Einzelspieler-Strategiespiele im B2C-Markt etablieren.
+
 ---
 
-## Änderungshistorie
+### 15.2 Farbpalette
+
+Die gesamte Farbwelt folgt einem dunklen Nacht-Thema mit gezielten Akzentfarben. Jede Farbe hat eine definierte semantische Rolle.
+
+| Token | Hex | Vorschau | Rolle | Begründung |
+|-------|-----|----------|-------|------------|
+| `bg_dark` | `#1a1a2e` | ██ Nacht-Marine | Haupthintergrund aller Screens | Dunkelstes Blau – erzeugt Tiefe, reduziert Augenermüdung bei längeren Spielsessions. Assoziiert mit Nacht, Konzentration, Technologie. |
+| `bg_mid` | `#16213e` | ██ Tief-Blau | Header- und Navigationsleisten | Leicht heller als bg_dark, schafft subtile Hierarchie ohne harte Kontraste. |
+| `bg_card` | `#0f3460` | ██ Dunkel-Blau | Karten, Eingabefelder, Dialoge | Klare Abgrenzung von Inhalten ohne Weiß zu verwenden. Signalisiert „interaktiver Bereich". |
+| `accent` | `#e94560` | ██ HHBKTendo-Rot | Primäre Buttons, Titel, Logo | Markante Signalfarbe. Rot steht für Spannung, Wettkampf und Aufmerksamkeit – passend für Spielstarts und Call-to-Actions. |
+| `accent2` | `#533483` | ██ Lila | Sekundäre Buttons (Register, Leaderboard) | Ruhigere Alternative zum Rot, signalisiert Nebenaktionen. Lila assoziiert KI und Tech. |
+| `text_light` | `#eaeaea` | ██ Hellgrau | Primärtext, Labels | Kein reines Weiß – sanfterer Kontrast auf dunklem Grund, angenehmer zu lesen. |
+| `text_dim` | `#a0a0b0` | ██ Gedämpftes Grau | Sekundärtext, Hints, Statuszeilen | Visuell untergeordnet, ohne unsichtbar zu sein. |
+
+#### Spielfeld-Farben
+
+| Token | Hex | Verwendung |
+|-------|-----|------------|
+| `board_light` | `#eecc99` | Helle Felder Bauernschach – klassisches Schach-Beige |
+| `board_dark` | `#8b5e3c` | Dunkle Felder Bauernschach – warmes Holzbraun |
+| `ttt_x` | `#64b5f6` | X-Stein (Mensch) in Tic-Tac-Toe – Hellblau: kühl, präzise |
+| `ttt_o` | `#ef5350` | O-Stein (KI) in Tic-Tac-Toe – Rot: aggressiv, Gegner |
+| `valid_move` | `#2e7d32` | Gültige Züge (Bauernschach) – Grün: „hier kann ich hin" |
+| `highlight` | `#e94560` | Ausgewählte Figur – Akzentrot: „das ist aktiv" |
+
+---
+
+### 15.3 Typografie
+
+| Einsatz | Schriftart | Stil | Größe |
+|---------|-----------|------|-------|
+| Haupttitel (HHBKTendo) | Segoe UI | Bold | 28 pt |
+| Screen-Überschriften | Segoe UI | Bold | 16 pt |
+| Karten-Titel, Spielname | Segoe UI | Bold | 13 pt |
+| Buttons | Segoe UI | Bold | 11 pt |
+| Labels, Texte | Segoe UI | Regular | 11–12 pt |
+| Statuszeilen, Hints | Segoe UI | Regular | 9–10 pt |
+| Spielfigur-Symbole (Bauernschach) | Arial | Bold | 22 pt |
+
+Segoe UI ist die Systemschrift unter Windows 10/11 (Zielplattform) und ermöglicht scharfe Darstellung ohne zusätzliche Schriftinstallation. Die ausschließliche Verwendung einer Schriftfamilie hält das Design ruhig und konsistent.
+
+---
+
+### 15.4 UI-Mockups
+
+Die folgenden Mockups zeigen den finalen Screenfluss der Anwendung. Farbreferenzen beziehen sich auf die Palette aus Abschnitt 15.2.
+
+#### 15.4.1 Login-Screen
+
+```
+┌─────────────────────────────────────────────┐  bg_dark #1a1a2e
+│                                             │
+│              HHBKTendo                      │  ← accent #e94560, 28pt Bold
+│        HHBKTendo Game Collection            │  ← text_dim, 13pt
+│                                             │
+│  ┌───────────────────────────────────────┐  │  bg_card #0f3460
+│  │                                       │  │
+│  │  Username                             │  │  ← text_light
+│  │  ┌─────────────────────────────────┐  │  │
+│  │  │                                 │  │  │  ← Eingabefeld
+│  │  └─────────────────────────────────┘  │  │
+│  │                                       │  │
+│  │  Password                             │  │
+│  │  ┌─────────────────────────────────┐  │  │
+│  │  │  ••••••••                       │  │  │
+│  │  └─────────────────────────────────┘  │  │
+│  │                                       │  │
+│  │  ┌─────────────────────────────────┐  │  │
+│  │  │            Login                │  │  │  ← accent #e94560
+│  │  └─────────────────────────────────┘  │  │
+│  │  ┌─────────────────────────────────┐  │  │
+│  │  │           Register              │  │  │  ← accent2 #533483
+│  │  └─────────────────────────────────┘  │  │
+│  │  ─────────────────────────────────    │  │  ← Trennlinie
+│  │  ┌─────────────────────────────────┐  │  │
+│  │  │        Play as Guest            │  │  │  ← #444466
+│  │  └─────────────────────────────────┘  │  │
+│  └───────────────────────────────────────┘  │
+│                              [ DE / EN ]    │  ← text_dim
+└─────────────────────────────────────────────┘
+```
+
+#### 15.4.2 Hauptmenü
+
+```
+┌─────────────────────────────────────────────────────────────┐  bg_dark
+│  ████ HHBKTendo   alice              [ DE/EN ]  [ Logout ]  │  bg_mid header
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│                    Select a Game                            │  ← 16pt Bold
+│                                                             │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐ │  bg_card
+│  │      Pawn Chess          │  │  Tic-Tac-Toe (4 in a Row)│ │  ← 13pt Bold
+│  │                          │  │                          │ │
+│  │  Difficulty              │  │  Difficulty              │ │
+│  │  ○ Easy                  │  │  ○ Easy                  │ │
+│  │  ○ Medium                │  │  ○ Medium                │ │
+│  │  ● Hard          ←Standard  │  ● Hard                  │ │
+│  │  ○ Expert                │  │  ○ Expert                │ │
+│  │  ○ Master                │  │  ○ Master                │ │
+│  │                          │  │                          │ │
+│  │  ┌──────────────────┐    │  │  ┌──────────────────┐    │ │
+│  │  │      Play        │    │  │  │      Play        │    │ │  ← accent
+│  │  └──────────────────┘    │  │  └──────────────────┘    │ │
+│  │  ┌──────────────────┐    │  │  ┌──────────────────┐    │ │
+│  │  │   Leaderboard    │    │  │  │   Leaderboard    │    │ │  ← accent2
+│  │  └──────────────────┘    │  │  └──────────────────┘    │ │
+│  └──────────────────────────┘  └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 15.4.3 Spielscreen – Bauernschach
+
+```
+┌─────────────────────────────────────────────────────────────┐  bg_dark
+│  ████ Pawn Chess │ Hard │ Your turn          [Rules][Abort] │  bg_mid
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│          0       1       2       3       4       5          │
+│        ┌───────┬───────┬───────┬───────┬───────┬───────┐   │
+│   0    │  ♟   │▓▓▓▓▓▓▓│  ♟   │▓▓▓▓▓▓▓│  ♟   │▓▓▓▓▓▓▓│   │  KI-Bauern
+│        ├───────┼───────┼───────┼───────┼───────┼───────┤   │  #1a1a2e/#aaaaaa
+│   1    │▓▓▓▓▓▓▓│       │▓▓▓▓▓▓▓│       │▓▓▓▓▓▓▓│       │   │
+│        ├───────┼───────┼───────┼───────┼───────┼───────┤   │
+│   2    │       │▓▓▓▓▓▓▓│       │▓▓▓▓▓▓▓│       │▓▓▓▓▓▓▓│   │
+│        ├───────┼───────┼───────┼───────┼───────┼───────┤   │
+│   3    │▓▓▓▓▓▓▓│       │▓▓▓▓▓▓▓│       │▓▓▓▓▓▓▓│       │   │
+│        ├───────┼───────┼───────┼───────┼───────┼───────┤   │
+│   4    │       │▓▓▓▓▓▓▓│  ●   │▓▓▓▓▓▓▓│  ○   │▓▓▓▓▓▓▓│   │  ● ausgewählt (#e94560)
+│        ├───────┼───────┼───────┼───────┼───────┼───────┤   │  ○ gültiger Zug (#2e7d32)
+│   5    │  ♙   │  ♙   │▓▓▓▓▓▓▓│  ♙   │▓▓▓▓▓▓▓│  ♙   │   │  Mensch-Bauern #fff
+│        └───────┴───────┴───────┴───────┴───────┴───────┘   │
+│                                                             │
+│  ▓ = board_dark #8b5e3c   □ = board_light #eecc99          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 15.4.4 Spielscreen – Tic-Tac-Toe (4 gewinnt)
+
+```
+┌─────────────────────────────────────────────────────────────┐  bg_dark
+│  ████ Tic-Tac-Toe (4 in a Row) │ Hard │ AI is thinking...  │  bg_mid
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│     ┌───────┬───────┬───────┬───────┬───────┬───────┐      │
+│     │       │       │       │       │       │       │      │
+│     ├───────┼───────┼───────┼───────┼───────┼───────┤      │
+│     │       │   X   │   O   │       │       │       │      │  X = ttt_x #64b5f6
+│     ├───────┼───────┼───────┼───────┼───────┼───────┤      │  O = ttt_o #ef5350
+│     │       │   O   │   X   │   X   │       │       │      │
+│     ├───────┼───────┼───────┼───────┼───────┼───────┤      │
+│     │       │       │   O   │   X   │       │       │      │
+│     ├───────┼───────┼───────┼───────┼───────┼───────┤      │
+│     │       │       │       │       │       │       │      │
+│     ├───────┼───────┼───────┼───────┼───────┼───────┤      │
+│     │       │       │       │       │       │       │      │
+│     └───────┴───────┴───────┴───────┴───────┴───────┘      │
+│                                                             │
+│         X = You (Human)          O = AI                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 15.4.5 Ergebnis-Overlay (Spielende)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ████ Tic-Tac-Toe (4 in a Row) │ Hard │ ...                │
+├─────────────────────────────────────────────────────────────┤
+│                          ┌───────────────────────────────┐  │
+│     [ Spielfeld ]        │                               │  │
+│                          │        You win!               │  │  ← win #4caf50
+│                          │                               │  │
+│                          │  ┌─────────────────────────┐  │  │
+│                          │  │      Back to Menu        │  │  │  ← accent
+│                          │  └─────────────────────────┘  │  │
+│                          └───────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+
+  Ergebnisfarben:  You win!  → #4caf50 (Grün)
+                  AI wins!  → #e94560 (Rot / accent)
+                  Draw!     → #ff9800 (Orange)
+```
+
+#### 15.4.6 Bestenliste (Popup)
+
+```
+┌─────────────────────────────────────────┐  bg_dark
+│                                         │
+│    Leaderboard – Pawn Chess – Hard      │  ← accent, Bold
+│                                         │
+│  ┌─────────────────────────────────┐    │
+│  │  Rang  Spieler   Siege  Niederl │    │  bg_card
+│  │  ────  ───────   ─────  ─────── │    │
+│  │   1    alice       7       2    │    │  ← text_light
+│  │   2    bob         5       4    │    │
+│  │   3    carol       3       1    │    │
+│  │   4    dave        1       6    │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│         ┌─────────────────┐             │
+│         │     Close       │             │  ← accent
+│         └─────────────────┘             │
+└─────────────────────────────────────────┘
+```
+
+---
+
+### 15.5 Designprinzipien
+
+| Prinzip | Umsetzung |
+|---------|-----------|
+| **Dunkel-First** | Alle Hintergründe dunkel – kein heller Screen in der gesamten App |
+| **Farbhierarchie** | Rot (accent) = primär, Lila (accent2) = sekundär, Grau = passiv |
+| **Konsistenz** | Alle interaktiven Elemente (Buttons) gleiche Form, Schrift und Padding |
+| **Feedback** | Jeder Zustandswechsel hat eine visuelle Entsprechung (Farbe, Symbol) |
+| **Plattformkompatibilität** | Buttons als `tk.Label` mit Bindings – funktioniert auf Windows und macOS |
+| **Spielfeld-Isolation** | Brett-Farben (Beige/Braun) bewusst aus der CI-Palette herausgehalten, um Spielbereich klar abzugrenzen |
+
+---
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
@@ -566,5 +795,6 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 | 1.1 | 2026-04-21 | Tic-Tac-Toe zwischenzeitlich auf 3×3 geändert; NF-09 (macOS-Kompatibilität) ergänzt |
 | 1.2 | 2026-04-21 | Tic-Tac-Toe gemäß Lastenheft (LF4020) auf 6×6 / 4 in einer Reihe zurückgesetzt; PF-M03, Abschnitt 4.2, Bewertungsfunktion, TC-09–TC-11 wiederhergestellt |
 | 1.3 | 2026-04-22 | Abgleich mit Lastenheft: PF-K03 (Dame) und PF-K04 (alternative KI-Schnittstelle) als Kann-Ziele ergänzt; neuer Abschnitt 12 mit Dokumentations- und Konzeptanforderungen (DOC-01–DOC-13) aus LD5100–LD5500; Abschnitt 14.2 Offene Punkte erweitert; Liefergegenstände mit Anforderungsreferenzen verknüpft |
+| 1.4 | 2026-04-22 | Neuer Abschnitt 15: Design und Corporate Identity – Farbpalette mit Begründungen, Typografie, Designprinzipien und ASCII-Mockups aller sechs Hauptscreens (Login, Menü, Bauernschach, Tic-Tac-Toe, Ergebnis-Overlay, Bestenliste) |
 
 *Pflichtenheft erstellt auf Basis des Lastenhefts Strategiespiele V13a, HHBK Tendo Research Center, 2026.*
