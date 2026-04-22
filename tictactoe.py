@@ -4,7 +4,6 @@ Spieler: HUMAN = 1, AI = -1
 Gewinnt, wer zuerst 4 in Reihe hat (horizontal, vertikal, diagonal)
 """
 
-import copy
 from minimax import SCORE_WIN, SCORE_LOSS, SCORE_DRAW
 
 BOARD_SIZE = 6
@@ -21,22 +20,45 @@ def create_board():
 
 def get_valid_moves(board, is_maximizing):
     """
-    Gibt alle freien Felder als mögliche Züge zurück.
+    Gibt Kandidatenzüge für MiniMax zurück: nur leere Felder, die direkt
+    (Abstand 1) an bereits gesetzte Steine angrenzen. Sortiert nach
+    Zentrumsnähe für effektiveres Alpha-Beta-Pruning.
+    Fallback auf die vier Mittelfelder wenn das Brett noch leer ist.
     Zug-Format: (row, col)
     """
-    moves = []
-    for row in range(BOARD_SIZE):
-        for col in range(BOARD_SIZE):
-            if board[row][col] == EMPTY:
-                moves.append((row, col))
-    return moves
+    occupied = []
+    for r in range(BOARD_SIZE):
+        for c in range(BOARD_SIZE):
+            if board[r][c] != EMPTY:
+                occupied.append((r, c))
+
+    if not occupied:
+        # Leeres Brett: nur Mitte anbieten, hält Verzweigungsgrad klein
+        mid = BOARD_SIZE // 2
+        return [(r, c) for r in range(mid - 1, mid + 1)
+                       for c in range(mid - 1, mid + 1)]
+
+    candidates = set()
+    for (r, c) in occupied:
+        for dr in range(-1, 2):
+            for dc in range(-1, 2):
+                if dr == 0 and dc == 0:
+                    continue
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and board[nr][nc] == EMPTY:
+                    candidates.add((nr, nc))
+
+    # Zentrumsnähe: gute Züge zuerst → mehr Alpha-Beta-Cuts
+    center = (BOARD_SIZE - 1) / 2.0
+    return sorted(candidates, key=lambda m: abs(m[0] - center) + abs(m[1] - center))
 
 
 def apply_move(board, move, is_maximizing):
     """
     Wendet einen Zug auf das Spielfeld an und gibt eine Kopie zurück.
+    Flache Zeilenkopie statt deepcopy – deutlich schneller bei häufigen Aufrufen.
     """
-    new_board = copy.deepcopy(board)
+    new_board = [row[:] for row in board]
     row, col = move
     new_board[row][col] = AI if is_maximizing else HUMAN
     return new_board

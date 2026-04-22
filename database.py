@@ -45,11 +45,18 @@ def init_db():
         )
     """)
 
+    # Migration: Sprachspalte nachrüsten falls DB schon existiert (LD4200)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Spalte existiert bereits
+
     conn.commit()
     conn.close()
 
 
-def register_user(username, password_hash):
+def register_user(username, password_hash, language="en"):
     """
     Registriert einen neuen Benutzer.
     Gibt True zurück bei Erfolg, False wenn Benutzername bereits vergeben.
@@ -58,8 +65,8 @@ def register_user(username, password_hash):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, password_hash)
+            "INSERT INTO users (username, password_hash, language) VALUES (?, ?, ?)",
+            (username, password_hash, language)
         )
         conn.commit()
         user_id = cursor.lastrowid
@@ -75,6 +82,18 @@ def get_user_by_username(username):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+
+def get_user_by_id(user_id):
+    """Gibt Benutzerdaten anhand der ID zurück."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
     row = cursor.fetchone()
     conn.close()
     if row:

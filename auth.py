@@ -4,8 +4,11 @@ Passwörter werden gehasht gespeichert (LN5030)
 """
 
 import hashlib
+import json
 import os
 import database
+
+SESSION_FILE = os.path.join(os.path.dirname(__file__), "session.json")
 
 # Aktuell eingeloggter Benutzer (None = Gast)
 current_user = None
@@ -34,7 +37,7 @@ def verify_password(password, stored_hash):
     return check_hash == pw_hash
 
 
-def register(username, password):
+def register(username, password, language="en"):
     """
     Registriert einen neuen Benutzer.
     Gibt (True, user_id) bei Erfolg zurück, (False, Fehlermeldung) bei Fehler.
@@ -46,7 +49,7 @@ def register(username, password):
 
     username = username.strip()
     pw_hash = hash_password(password)
-    user_id = database.register_user(username, pw_hash)
+    user_id = database.register_user(username, pw_hash, language)
 
     if user_id is None:
         return False, "Username already taken."
@@ -79,9 +82,46 @@ def set_current_user(user):
 
 
 def logout():
-    """Meldet den aktuellen Benutzer ab."""
+    """Meldet den aktuellen Benutzer ab und löscht die gespeicherte Session."""
     global current_user
     current_user = None
+    clear_session()
+
+
+def save_session(user_id):
+    """Speichert die User-ID in einer Session-Datei für Auto-Login."""
+    try:
+        with open(SESSION_FILE, "w") as f:
+            json.dump({"user_id": user_id}, f)
+    except OSError:
+        pass
+
+
+def load_session():
+    """
+    Liest die gespeicherte Session und gibt den User zurück.
+    Gibt None zurück wenn keine Session vorhanden oder User nicht gefunden.
+    """
+    if not os.path.exists(SESSION_FILE):
+        return None
+    try:
+        with open(SESSION_FILE, "r") as f:
+            data = json.load(f)
+        user_id = data.get("user_id")
+        if user_id is None:
+            return None
+        return database.get_user_by_id(user_id)
+    except (OSError, json.JSONDecodeError, KeyError):
+        return None
+
+
+def clear_session():
+    """Löscht die gespeicherte Session-Datei."""
+    try:
+        if os.path.exists(SESSION_FILE):
+            os.remove(SESSION_FILE)
+    except OSError:
+        pass
 
 
 def get_current_user():

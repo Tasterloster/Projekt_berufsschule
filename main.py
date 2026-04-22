@@ -111,6 +111,7 @@ TEXTS = {
         "close": "Close",
         "confirm_abort": "Abort the current game?",
         "level": "Level",
+        "keep_logged_in": "Keep me logged in",
     },
     "de": {
         "title": "HHBKTendo Spielesammlung",
@@ -151,6 +152,7 @@ TEXTS = {
         "close": "Schließen",
         "confirm_abort": "Das aktuelle Spiel abbrechen?",
         "level": "Level",
+        "keep_logged_in": "Angemeldet bleiben",
     }
 }
 
@@ -255,21 +257,40 @@ def build_login_screen(root, frame):
                           fg=COLORS["accent"], font=("Segoe UI", 10))
     lbl_error.pack()
 
+    # "Angemeldet bleiben"-Checkbox
+    keep_logged_in_var = tk.BooleanVar(value=False)
+    tk.Checkbutton(
+        card, text=t("keep_logged_in"),
+        variable=keep_logged_in_var,
+        bg=COLORS["bg_card"], fg=COLORS["text_dim"],
+        selectcolor=COLORS["bg_mid"],
+        activebackground=COLORS["bg_card"],
+        activeforeground=COLORS["text_light"],
+        font=("Segoe UI", 10)
+    ).pack(anchor="w", pady=(4, 8))
+
     def do_login():
         ok, result = auth.login(entry_user.get(), entry_pass.get())
         if ok:
             auth.set_current_user(result)
             app_state["language"] = result.get("language", "en")
+            if keep_logged_in_var.get():
+                auth.save_session(result["id"])
+            else:
+                auth.clear_session()
             show_screen(root, build_main_menu)
         else:
             lbl_error.config(text=result)
 
     def do_register():
-        ok, result = auth.register(entry_user.get(), entry_pass.get())
+        ok, result = auth.register(entry_user.get(), entry_pass.get(), app_state["language"])
         if ok:
             ok2, user = auth.login(entry_user.get(), entry_pass.get())
             if ok2:
                 auth.set_current_user(user)
+                app_state["language"] = user.get("language", "en")
+                if keep_logged_in_var.get():
+                    auth.save_session(user["id"])
                 show_screen(root, build_main_menu)
         else:
             lbl_error.config(text=result)
@@ -894,7 +915,15 @@ def main():
     except Exception:
         pass
 
-    show_screen(root, build_login_screen)
+    # Auto-Login: gespeicherte Session laden
+    saved_user = auth.load_session()
+    if saved_user:
+        auth.set_current_user(saved_user)
+        app_state["language"] = saved_user.get("language", "en")
+        show_screen(root, build_main_menu)
+    else:
+        show_screen(root, build_login_screen)
+
     root.mainloop()
 
 

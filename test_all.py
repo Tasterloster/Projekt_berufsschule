@@ -66,21 +66,32 @@ class TestTicTacToe(unittest.TestCase):
 
     # ── Gültige Züge ────────────────────────────────────
     def test_get_valid_moves_empty_board(self):
-        """Auf leerem Brett sind alle 36 Felder gültige Züge."""
+        """Auf leerem Brett werden die 4 Mittelfelder als Startoptionen zurückgegeben."""
         moves = ttt.get_valid_moves(ttt.create_board(), True)
-        self.assertEqual(len(moves), 36)
+        self.assertEqual(len(moves), 4)
+        # Mittelfelder bei einem 6×6-Brett: (2,2), (2,3), (3,2), (3,3)
+        for pos in [(2, 2), (2, 3), (3, 2), (3, 3)]:
+            self.assertIn(pos, moves)
 
     def test_get_valid_moves_partial_board(self):
-        """Nach 3 gesetzten Steinen verbleiben 33 gültige Züge."""
+        """Nach gesetzten Steinen werden nur direkt angrenzende freie Felder zurückgegeben."""
         board = ttt.create_board()
         board[0][0] = ttt.HUMAN
         board[1][1] = ttt.AI
         board[2][2] = ttt.HUMAN
         moves = ttt.get_valid_moves(board, True)
-        self.assertEqual(len(moves), 33)
+        # Besetzte Felder dürfen nicht vorkommen
         self.assertNotIn((0, 0), moves)
         self.assertNotIn((1, 1), moves)
         self.assertNotIn((2, 2), moves)
+        # Felder mit keinem Nachbarn dürfen nicht vorkommen
+        self.assertNotIn((5, 5), moves)
+        self.assertNotIn((0, 5), moves)
+        # Alle zurückgegebenen Felder müssen leer und im Brett liegen
+        for (r, c) in moves:
+            self.assertEqual(board[r][c], ttt.EMPTY)
+            self.assertGreaterEqual(r, 0); self.assertLess(r, 6)
+            self.assertGreaterEqual(c, 0); self.assertLess(c, 6)
 
     # ── Zug ausführen ───────────────────────────────────
     def test_apply_move_places_human(self):
