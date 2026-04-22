@@ -104,6 +104,7 @@ HHBKTendo Spielesammlung
 ├── minimax.py       Generischer MiniMax + Alpha-Beta-Pruning (spielunabhängig)
 ├── pawn_chess.py    Spiellogik Bauernschach (Brett, Züge, Bewertung)
 ├── tictactoe.py     Spiellogik Tic-Tac-Toe 4-gewinnt (6×6, 4 in einer Reihe, Brett, Züge, Bewertung)
+├── test_all.py      Tests, welche die Methoden nach Richtigkeit prüfen (erwartetes Resultat wird geprüft)        
 └── games.db         SQLite-Datenbankdatei (auto-generiert beim Start)
 ```
 
