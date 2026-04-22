@@ -596,6 +596,13 @@ Die gesamte Farbwelt folgt einem dunklen Nacht-Thema mit gezielten Akzentfarben.
 
 ---
 
+### 15.2.1 Darkmode - Funktion
+
+### Anforderungen
+- Umschaltbar (Light/Dark)
+- Speicherung der Auswahl
+- Systemeinstellung berücksichtigen
+
 ### 15.3 Typografie
 
 | Einsatz | Schriftart | Stil | Größe |
