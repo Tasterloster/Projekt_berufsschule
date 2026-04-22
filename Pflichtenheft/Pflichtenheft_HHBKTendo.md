@@ -3,8 +3,8 @@
 **Projekt:** Strategiespiele-Prototyp mit MiniMax-KI
 **Auftraggeber:** HHBK Tendo Research Center
 **Auftragnehmer:** Projektteam (Lernfeld 5)
-**Version:** 1.2
-**Datum:** 2026-04-21
+**Version:** 1.3
+**Datum:** 2026-04-22
 **Status:** Entwurf
 
 ---
@@ -22,8 +22,9 @@
 9. [Globale Variablen und Zustandsmodell](#9-globale-variablen-und-zustandsmodell)
 10. [MiniMax-Algorithmus und Bewertungsfunktionen](#10-minimax-algorithmus-und-bewertungsfunktionen)
 11. [Testfälle und Abnahmekriterien](#11-testfälle-und-abnahmekriterien)
-12. [Liefergegenstände](#12-liefergegenstände)
-13. [Projektplanung](#13-projektplanung)
+12. [Dokumentations- und Konzeptanforderungen](#12-dokumentations--und-konzeptanforderungen)
+13. [Liefergegenstände](#13-liefergegenstände)
+14. [Projektplanung](#14-projektplanung)
 
 ---
 
@@ -59,11 +60,12 @@
 |----|---------------|--------------|
 | PF-K01 | LF4130 | Der Benutzer kann die Sprache zwischen Englisch (Standard) und Deutsch umschalten. |
 | PF-K02 | LD4230 | Spracheinstellung wird benutzerspezifisch in der Datenbank gespeichert. |
+| PF-K03 | LF4000 | Das Spiel Dame kann als drittes Strategiespiel implementiert werden (vereinfachte Regeln, 6×6, MiniMax-KI). |
+| PF-K04 | LF4120 | Eine definierte Schnittstelle ermöglicht die Einbindung einer alternativen KI anstelle von MiniMax. |
 
 ### 1.4 Abgrenzung (Wont-have)
 
 - Kein Netzwerkbetrieb / Multiplayer (LF4140)
-- Kein drittes KI-System als alternative Schnittstelle (LF4120 Could have – nicht priorisiert)
 
 ---
 
@@ -468,25 +470,67 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 
 ---
 
-## 12 Liefergegenstände
+## 12 Dokumentations- und Konzeptanforderungen
+
+### 12.1 Benutzerdokumentation
+
+| ID | Herkunft (LH) | Beschreibung |
+|----|---------------|-------------|
+| DOC-01 | LD5100 | Die Benutzerdokumentation ermöglicht einer nicht am Projekt beteiligten Person die eigenständige Installation und Ausführung der Anwendung. |
+
+### 12.2 Technische Dokumentation
+
+| ID | Herkunft (LH) | Beschreibung |
+|----|---------------|-------------|
+| DOC-02 | LD5200 | Beschreibung des Spielverhaltens zur Laufzeit (Zustandsübergänge, Spielablauf). |
+| DOC-03 | LD5210 | Erläuterung des MiniMax-Algorithmus und der Bewertungsfunktionen je Spiel, inkl. Schwierigkeitsgrad. |
+| DOC-04 | LD5220 | Beschreibung der Software-Architektur (Module, Schnittstellen, Datenfluss). |
+| DOC-05 | LD5230 | Beschreibung aller verwendeten globalen Variablen und des zentralen `app_state`-Dictionaries. |
+
+### 12.3 Abschlusspräsentation
+
+| ID | Herkunft (LH) | Beschreibung |
+|----|---------------|-------------|
+| DOC-06 | LD5300 | SOLL/IST-Vergleich der realisierten Features (Lastenheft vs. Pflichtenheft vs. Umsetzung vs. Test). |
+| DOC-07 | LD5310 | SOLL/IST-Vergleich der Projektplanung (Pflichtenheft-Zeitplan vs. tatsächlicher Projektverlauf). |
+| DOC-08 | LD5320 | Darstellung wesentlicher Softwarekomponenten oder Ideen (z. B. MiniMax, Bewertungsfunktion, GUI). |
+| DOC-09 | LD5330 | Aufführung verwendeter Quellen und Werkzeuge (Bibliotheken, Referenzen, KI-Tools). |
+| DOC-10 | LD5340 | Fazit zum Projektverlauf: Zusammenarbeit, Aufwand, Lessons learnt. |
+
+### 12.4 Konzept Corporate Identity & Branding
+
+| ID | Herkunft (LH) | Beschreibung |
+|----|---------------|-------------|
+| DOC-11 | LD5400 | Das CI-Konzept begründet die gewählten Design-Elemente und enthält ein Mission und Vision Statement für die Marke HHBKTendo. |
+| DOC-12 | LD5410 | Englischsprachiges Pitch-Konzept inkl. Skript für eine mündliche Präsentation mit überzeugender Argumentation für potenzielle Investoren und hohem Aufmerksamkeitswert. |
+
+### 12.5 Konzept Arbeitszeitgestaltung
+
+| ID | Herkunft (LH) | Beschreibung |
+|----|---------------|-------------|
+| DOC-13 | LD5500 | Das Konzept stellt Plan- und IST-Arbeitszeiten gegenüber, benennt Risiken und Herausforderungen und formuliert Empfehlungen für künftige Rahmenbedingungen der Projektarbeit bei HHBKTendo. |
+
+---
+
+## 13 Liefergegenstände
 
 | # | Liefergegenstand | Verantwortlich |
 |---|-----------------|----------------|
 | 1 | Pflichtenheft (dieses Dokument) | Team |
 | 2 | Quellcode (alle .py-Dateien + games.db) | Entwickler |
-| 3 | Benutzerdokumentation (Installation, Start, Spielanleitung) | Dokumentation |
-| 4 | Technische Dokumentation (Architektur, Algorithmen, Variablen) | Entwickler |
+| 3 | Benutzerdokumentation (Installation, Start, Spielanleitung) – Anforderungen DOC-01 | Dokumentation |
+| 4 | Technische Dokumentation (Spielverhalten, Algorithmen, Architektur, globale Variablen) – Anforderungen DOC-02 bis DOC-05 | Entwickler |
 | 5 | Testprotokoll (TC-01 bis TC-15) | Test |
-| 6 | Abschlusspräsentation (SOLL/IST, Softwarekomponenten, Fazit) | Team |
-| 7 | Konzept Corporate Identity & Branding | Design |
-| 8 | Pitch-Deck (englischsprachig, für Investoren) | Team |
-| 9 | Konzept Arbeitszeitgestaltung (Plan vs. IST) | Projektleitung |
+| 6 | Abschlusspräsentation (SOLL/IST Features & Zeitplan, Softwarekomponenten, Quellen, Fazit) – Anforderungen DOC-06 bis DOC-10 | Team |
+| 7 | Konzept Corporate Identity & Branding (Design-Begründung, Mission/Vision) – Anforderung DOC-11 | Design |
+| 8 | Pitch-Deck (englischsprachig, Investoren-Argumentation) – Anforderung DOC-12 | Team |
+| 9 | Konzept Arbeitszeitgestaltung (Plan vs. IST, Risiken, Empfehlungen) – Anforderung DOC-13 | Projektleitung |
 
 ---
 
-## 13 Projektplanung
+## 14 Projektplanung
 
-### 13.1 Projektphasen (Wasserfallmodell)
+### 14.1 Projektphasen (Wasserfallmodell)
 
 | Phase | Inhalt | Zeitraum              |
 |-------|--------|-----------------------|
@@ -496,15 +540,18 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 | Dokumentation | Benutzerdokumentation, Technische Doku, Präsentation, Pitch, CI-Konzept | Woche 2 (Ende)        |
 | Abschluss | Live-Demo, Präsentation, Fachgespräch (ca. 20+10 min) | Woche 3 (letzter Tag) |
 
-### 13.2 Offene Punkte
+### 14.2 Offene Punkte
 
-| # | Offener Punkt | Status |
-|---|---------------|--------|
-| 1 | Dame (Checkers) als drittes Spiel implementieren | Optional / Zeit abhängig |
-| 2 | Testprotokoll-Dokument erstellen und ausfüllen | Ausstehend |
-| 3 | Benutzerdokumentation schreiben | Ausstehend |
-| 4 | CI/Branding-Konzept | Ausstehend |
-| 5 | Englischsprachiger Pitch | Ausstehend |
+| # | Offener Punkt | Referenz | Status |
+|---|---------------|----------|--------|
+| 1 | Dame als drittes Spiel implementieren | PF-K03 | Optional / zeitabhängig |
+| 2 | Alternative KI-Schnittstelle definieren und implementieren | PF-K04 | Optional / zeitabhängig |
+| 3 | Testprotokoll-Dokument erstellen und ausfüllen | TC-01–TC-15 | Ausstehend |
+| 4 | Benutzerdokumentation schreiben | DOC-01 | Ausstehend |
+| 5 | Technische Dokumentation vervollständigen | DOC-02–DOC-05 | Ausstehend |
+| 6 | CI/Branding-Konzept (inkl. Mission/Vision) erstellen | DOC-11 | Ausstehend |
+| 7 | Englischsprachigen Pitch erarbeiten | DOC-12 | Ausstehend |
+| 8 | Konzept Arbeitszeitgestaltung ausarbeiten | DOC-13 | Ausstehend |
 
 ---
 
@@ -517,5 +564,6 @@ Einsparung: Im besten Fall O(b^(d/2)) statt O(b^d) Knoten (b = Verzweigungsgrad,
 | 1.0 | 2026-04-20 | Erstversion |
 | 1.1 | 2026-04-21 | Tic-Tac-Toe zwischenzeitlich auf 3×3 geändert; NF-09 (macOS-Kompatibilität) ergänzt |
 | 1.2 | 2026-04-21 | Tic-Tac-Toe gemäß Lastenheft (LF4020) auf 6×6 / 4 in einer Reihe zurückgesetzt; PF-M03, Abschnitt 4.2, Bewertungsfunktion, TC-09–TC-11 wiederhergestellt |
+| 1.3 | 2026-04-22 | Abgleich mit Lastenheft: PF-K03 (Dame) und PF-K04 (alternative KI-Schnittstelle) als Kann-Ziele ergänzt; neuer Abschnitt 12 mit Dokumentations- und Konzeptanforderungen (DOC-01–DOC-13) aus LD5100–LD5500; Abschnitt 14.2 Offene Punkte erweitert; Liefergegenstände mit Anforderungsreferenzen verknüpft |
 
 *Pflichtenheft erstellt auf Basis des Lastenhefts Strategiespiele V13a, HHBK Tendo Research Center, 2026.*
