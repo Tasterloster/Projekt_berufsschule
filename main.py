@@ -423,14 +423,25 @@ def show_leaderboard(root, game, difficulty):
 
     entries = database.get_leaderboard(game, difficulty)
 
-    # Tabellenkopf
+    SEP_COLOR = "#3a3a5a"  # dünne Trennlinie zwischen Spalten
+    COLUMNS = [
+        (t("rank"),   5),
+        (t("player"), 16),
+        (t("wins"),   6),
+        (t("losses"), 8),
+        (t("games"),  6),
+    ]
+
+    # Tabellenkopf (Überschriften mittig, Trennlinien zwischen Spalten)
     cols_frame = tk.Frame(win, bg=COLORS["bg_mid"])
     cols_frame.pack(fill="x", padx=20)
-    for col, width in [(t("rank"), 5), (t("player"), 16),
-                        (t("wins"), 6), (t("losses"), 8), (t("games"), 6)]:
+    for i, (col, width) in enumerate(COLUMNS):
+        if i > 0:
+            tk.Frame(cols_frame, bg=SEP_COLOR, width=1).pack(
+                side="left", fill="y", pady=4)
         tk.Label(cols_frame, text=col, width=width,
                  bg=COLORS["bg_mid"], fg=COLORS["accent"],
-                 font=("Segoe UI", 10, "bold"), anchor="w").pack(side="left", padx=4)
+                 font=("Segoe UI", 10, "bold"), anchor="center").pack(side="left", padx=4)
 
     if not entries:
         tk.Label(win, text=t("no_entries"),
@@ -438,14 +449,20 @@ def show_leaderboard(root, game, difficulty):
                  font=("Segoe UI", 11)).pack(pady=20)
     else:
         for i, entry in enumerate(entries, 1):
-            row_frame = tk.Frame(win, bg=COLORS["bg_dark" if i % 2 else "bg_card"])
-            row_frame.pack(fill="x", padx=20)
             bg = COLORS["bg_dark"] if i % 2 else COLORS["bg_card"]
-            row_frame.config(bg=bg)
-            for val, width in [(str(i), 5), (entry["username"], 16),
-                                (str(entry["wins"]), 6),
-                                (str(entry["losses"]), 8),
-                                (str(entry["total_games"]), 6)]:
+            row_frame = tk.Frame(win, bg=bg)
+            row_frame.pack(fill="x", padx=20)
+            row_vals = [
+                (str(i),                    5),
+                (entry["username"],         16),
+                (str(entry["wins"]),         6),
+                (str(entry["losses"]),       8),
+                (str(entry["total_games"]),  6),
+            ]
+            for j, (val, width) in enumerate(row_vals):
+                if j > 0:
+                    tk.Frame(row_frame, bg=SEP_COLOR, width=1).pack(
+                        side="left", fill="y", pady=2)
                 tk.Label(row_frame, text=val, width=width,
                          bg=bg, fg=COLORS["text_light"],
                          font=("Segoe UI", 10), anchor="w").pack(side="left", padx=4, pady=3)
