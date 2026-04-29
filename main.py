@@ -443,6 +443,7 @@ def build_login_screen(root, frame):
     tk.Label(text_col, text="BlitzBoard",
              bg=COLORS["bg_dark"], fg=COLORS["accent"],
              font=("Segoe UI", 28, "bold")).pack(anchor="w")
+    #Untertitel
     tk.Label(text_col, text=t("title"),
              bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
              font=("Segoe UI", 13)).pack(anchor="w")
@@ -929,6 +930,7 @@ def build_game_screen(root, frame):
 
         _center_popup(dialog, root)
 
+    #Header Buttons: Regeln und Spiel abbrechen
     btn_frame = tk.Frame(header, bg=COLORS["bg_dark"])
     btn_frame.pack(side="right", padx=10)
     make_button(btn_frame, t("rules"),
