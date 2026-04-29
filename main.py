@@ -160,7 +160,7 @@ TEXTS = {
 def t(key):
     """Gibt den übersetzten Text für den aktuellen Sprachcode zurück."""
     lang = app_state["language"]
-    return TEXTS.get(lang, TEXTS["en"]).get(key, key)
+    return TEXTS.get(lang, TEXTS["en"]).get(key, key) #falls Sprache nicht gefunden wird, nimm Englisch; Falls key fehlt, gib selber einen
 
 
 # ─────────────────────────────────────────────
@@ -176,15 +176,15 @@ def make_button(parent, text, command, width=18, bg=None, fg=None):
     """Erstellt einen gestalteten Button (Label-basiert, funktioniert auf macOS)."""
     bg = bg or COLORS["btn_bg"]
     fg = fg or COLORS["btn_text"]
-    hover_bg = COLORS["btn_hover"] if bg == COLORS["btn_bg"] else bg
+    hover_bg = COLORS["btn_hover"] if bg == COLORS["btn_bg"] else bg # nur ändern, wenn Standart verwendet wird
     btn = tk.Label(
         parent, text=text,
         bg=bg, fg=fg, font=("Segoe UI", 11, "bold"),
         cursor="hand2", width=width,
         pady=6, padx=8
     )
-    btn.bind("<Button-1>", lambda e: command())
-    btn.bind("<Enter>",    lambda e: btn.config(bg=hover_bg))
+    btn.bind("<Button-1>", lambda e: command()) #löst command funktion aus mit linksklick
+    btn.bind("<Enter>",    lambda e: btn.config(bg=hover_bg)) #hover Effekt, Hintergrundfarbe ändern
     btn.bind("<Leave>",    lambda e: btn.config(bg=bg))
     return btn
 
@@ -212,7 +212,7 @@ def make_entry(parent, show=None):
 
 
 def show_screen(root, build_fn):
-    """Wechselt zum neuen Screen, zerstört den alten."""
+    """Wechselt zum neuen Screen, zerstört den alten. Erstellt neuen Frame. ruft übergeben build_fn auf für Inhaltsaufbau"""
     if app_state["current_screen"]:
         app_state["current_screen"].destroy()
     frame = tk.Frame(root, bg=COLORS["bg_dark"])
@@ -232,13 +232,14 @@ def build_login_screen(root, frame):
         bg=COLORS["bg_dark"], fg=COLORS["accent"],
         font=("Segoe UI", 28, "bold")
     ).pack(pady=(40, 4))
+    #Untertitel
     tk.Label(
         frame, text=t("title"),
         bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
         font=("Segoe UI", 13)
     ).pack(pady=(0, 30))
 
-    # Card
+    # Card: zenntrierter Bereich für Eingabe und Buttons
     card = tk.Frame(frame, bg=COLORS["bg_card"], padx=30, pady=30)
     card.pack(padx=40, pady=10)
 
@@ -270,6 +271,7 @@ def build_login_screen(root, frame):
     ).pack(anchor="w", pady=(4, 8))
 
     def do_login():
+        #Anmeldeversuch: User wird gesetzt, Sprache Übernommen, Session gespeichert, wechsel ins Hauptmenü
         ok, result = auth.login(entry_user.get(), entry_pass.get())
         if ok:
             auth.set_current_user(result)
@@ -283,6 +285,7 @@ def build_login_screen(root, frame):
             lbl_error.config(text=result)
 
     def do_register():
+        #registriert neuen User
         ok, result = auth.register(entry_user.get(), entry_pass.get(), app_state["language"])
         if ok:
             ok2, user = auth.login(entry_user.get(), entry_pass.get())
@@ -296,6 +299,7 @@ def build_login_screen(root, frame):
             lbl_error.config(text=result)
 
     def do_guest():
+        #Gastmodus
         auth.logout()
         show_screen(root, build_main_menu)
 
@@ -331,7 +335,7 @@ def build_main_menu(root, frame):
     user = auth.get_current_user()
     name = user["username"] if user else "Guest"
 
-    # Header
+    # Header mit App und User
     header = tk.Frame(frame, bg=COLORS["bg_mid"], pady=12)
     header.pack(fill="x")
     tk.Label(header, text="HHBKTendo",
@@ -342,15 +346,18 @@ def build_main_menu(root, frame):
              font=("Segoe UI", 11)).pack(side="left")
 
     def do_logout():
+        #Abmelden
         auth.logout()
         show_screen(root, build_login_screen)
 
     def toggle_lang():
+        #Sprache in datenbank aktualisieren
         app_state["language"] = "de" if app_state["language"] == "en" else "en"
         if user:
             database.update_user_language(user["id"], app_state["language"])
         show_screen(root, build_main_menu)
 
+    #Sprachumschalter oben rechts
     lang_btn = tk.Label(
         header, text="DE/EN",
         bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
@@ -359,6 +366,7 @@ def build_main_menu(root, frame):
     lang_btn.bind("<Button-1>", lambda e: toggle_lang())
     lang_btn.pack(side="right", padx=5)
 
+    #Logout Butten nur wenn eingeloggt
     if user:
         make_button(header, t("logout"), do_logout, width=10,
                     bg=COLORS["bg_mid"], fg=COLORS["text_dim"]).pack(side="right", padx=10)
@@ -366,10 +374,11 @@ def build_main_menu(root, frame):
     # Titel
     make_label(frame, t("select_game"), size=16, bold=True).pack(pady=(30, 10))
 
-    # Spielauswahl-Karten
+    # Spielauswahl-Karten: Frames/Container erstellen
     games_frame = tk.Frame(frame, bg=COLORS["bg_dark"])
     games_frame.pack(pady=10)
 
+    # jedes Spiel mit Titel, Schwierigkeit und button
     for game_key, label in [("pawn_chess", t("pawn_chess")),
                               ("tictactoe", t("tictactoe"))]:
         card = tk.Frame(games_frame, bg=COLORS["bg_card"], padx=20, pady=20)
@@ -388,6 +397,7 @@ def build_main_menu(root, frame):
             (1, t("easy")), (2, t("medium")), (3, t("hard")),
             (4, t("expert")), (5, t("master"))
         ]
+        #IntVar speichert Stufe
         diff_var = tk.IntVar(value=3)
         diff_frame = tk.Frame(card, bg=COLORS["bg_card"])
         diff_frame.pack(pady=6)
@@ -401,6 +411,7 @@ def build_main_menu(root, frame):
             ).pack(anchor="w")
 
         def make_play_cmd(gk, dv):
+            #Bei Play wird game gestartet
             def cmd():
                 app_state["game"] = gk
                 app_state["difficulty"] = dv.get()
@@ -411,6 +422,7 @@ def build_main_menu(root, frame):
                     make_play_cmd(game_key, diff_var)).pack(pady=(10, 4))
 
         def make_lb_cmd(gk, dv):
+            # Öffnet Bestenliste
             def cmd():
                 show_leaderboard(root, gk, dv.get())
             return cmd
@@ -431,6 +443,7 @@ def show_leaderboard(root, game, difficulty):
     win.geometry("450x400")
     win.resizable(False, False)
 
+    #Name und Schwierigkeit werden angezeigt
     game_name = t("pawn_chess") if game == "pawn_chess" else t("tictactoe")
     diff_names = ["", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
     diff_name = diff_names[difficulty] if difficulty <= 5 else str(difficulty)
@@ -442,6 +455,7 @@ def show_leaderboard(root, game, difficulty):
              bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
              font=("Segoe UI", 11)).pack(pady=(0, 15))
 
+    #Einträge aus Datenbank holen
     entries = database.get_leaderboard(game, difficulty)
 
     SEP_COLOR = "#3a3a5a"  # dünne Trennlinie zwischen Spalten
@@ -458,6 +472,7 @@ def show_leaderboard(root, game, difficulty):
     cols_frame.pack(fill="x", padx=20)
     for i, (col, width) in enumerate(COLUMNS):
         if i > 0:
+            #vertikale Trennlinie zwischen Spalten
             tk.Frame(cols_frame, bg=SEP_COLOR, width=1).pack(
                 side="left", fill="y", pady=4)
         tk.Label(cols_frame, text=col, width=width,
@@ -465,11 +480,14 @@ def show_leaderboard(root, game, difficulty):
                  font=("Segoe UI", 10, "bold"), anchor="center").pack(side="left", padx=4)
 
     if not entries:
+        #falls keine Einträge da sind
         tk.Label(win, text=t("no_entries"),
                  bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
                  font=("Segoe UI", 11)).pack(pady=20)
     else:
+        #jede Zeile der Liste anzeigen
         for i, entry in enumerate(entries, 1):
+            #Hintergundfarbe abwechseln
             bg = COLORS["bg_dark"] if i % 2 else COLORS["bg_card"]
             row_frame = tk.Frame(win, bg=bg)
             row_frame.pack(fill="x", padx=20)
@@ -488,6 +506,7 @@ def show_leaderboard(root, game, difficulty):
                          bg=bg, fg=COLORS["text_light"],
                          font=("Segoe UI", 10), anchor="w").pack(side="left", padx=4, pady=3)
 
+    # Schließen Button
     make_button(win, t("close"), win.destroy, width=12).pack(pady=20)
 
 
@@ -502,6 +521,7 @@ def show_rules(root, game):
     win.geometry("420x380")
     win.resizable(False, False)
 
+    #passende regeln aus Modulen holen
     lang = app_state["language"]
     if game == "pawn_chess":
         rules_text = pc.RULES_DE if lang == "de" else pc.RULES_EN
@@ -512,6 +532,7 @@ def show_rules(root, game):
              bg=COLORS["bg_dark"], fg=COLORS["accent"],
              font=("Segoe UI", 15, "bold")).pack(pady=(20, 10))
 
+    #text Widget für mehrzeilige regeln
     text_widget = tk.Text(win, bg=COLORS["bg_card"], fg=COLORS["text_light"],
                           font=("Segoe UI", 10), relief="flat",
                           padx=15, pady=15, wrap="word")
@@ -525,9 +546,12 @@ def show_rules(root, game):
 # ─────────────────────────────────────────────
 # SPIELSCREEN
 # ─────────────────────────────────────────────
+#Größe Zelle in Pixel
 CELL_SIZE = 72
+#radius Figur
 PIECE_RADIUS = 26
 
+#globale referencen damit Funktionen zugreifen können
 board_canvas = None
 status_label = None
 game_widgets = {}  # Referenzen auf dynamische Widgets
@@ -547,13 +571,14 @@ def build_game_screen(root, frame):
     else:
         app_state["board"] = ttt.create_board()
 
+    #Grundzustand für neues Spiel
     app_state["human_turn"] = True
     app_state["selected"] = None
     app_state["valid_moves"] = []
     app_state["game_over"] = False
     app_state["ai_thinking"] = False
 
-    # Header
+    # Header mit Name und Schwierigkeit
     header = tk.Frame(frame, bg=COLORS["bg_mid"], pady=10)
     header.pack(fill="x")
 
@@ -569,6 +594,7 @@ def build_game_screen(root, frame):
         if messagebox.askyesno(t("abort"), t("confirm_abort")):
             show_screen(root, build_main_menu)
 
+    #Header Buttons: Regeln und Spiel abbrechen
     btn_frame = tk.Frame(header, bg=COLORS["bg_mid"])
     btn_frame.pack(side="right", padx=10)
     make_button(btn_frame, t("rules"),
@@ -589,14 +615,16 @@ def build_game_screen(root, frame):
                              font=("Segoe UI", 13, "bold"))
     status_label.pack(pady=(12, 6))
 
-    # Spielfeld-Canvas
+    # Spielfeld-Canvas: quadratisch 6x6
     canvas_size = CELL_SIZE * 6
     board_canvas = tk.Canvas(frame, width=canvas_size, height=canvas_size,
                               bg=COLORS["bg_dark"], highlightthickness=0)
     board_canvas.pack(pady=10)
 
+    #erstes Zeichnen des Boards
     draw_board()
 
+    #Klicks verarbeiten
     board_canvas.bind("<Button-1>", on_board_click)
 
     # Zurück-Button
@@ -654,6 +682,7 @@ def draw_board():
                 border_color = COLORS["valid_move_out"]
                 border_width = 3
 
+            #feld zeichnen
             board_canvas.create_rectangle(x0, y0, x1, y1,
                                            fill=cell_color,
                                            outline=border_color,
