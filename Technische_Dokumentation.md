@@ -11,7 +11,7 @@
 | Datenbank | SQLite (über Standardbibliothek `sqlite3`) |
 | Architektur | Prozedural / modulbasiert |
 | Unterstützte Sprachen | Deutsch, Englisch |
-| Optionale Abhängigkeit | Pillow (`pip install Pillow`) – Hintergrundbild im Hauptmenü |
+| Abhängigkeit | Pillow – für GIF-Hintergrundanimation und PNG-Spielfiguren (wird beim Start automatisch installiert) |
 
 ---
 
@@ -21,14 +21,20 @@
 
 ```
 BlitzBoard/
-├── main.py          # GUI, Screens, globaler App-Zustand
-├── minimax.py       # Generischer KI-Algorithmus (MiniMax + Alpha-Beta)
-├── pawn_chess.py    # Spiellogik Bauernschach
-├── tictactoe.py     # Spiellogik Tic-Tac-Toe (4 gewinnt)
-├── database.py      # SQLite-Datenbankzugriff
-├── auth.py          # Benutzerverwaltung & Authentifizierung
-├── test_all.py      # Unittests (TC-01 bis TC-15)
-└── games.db         # SQLite-Datenbankdatei (wird bei Start erstellt)
+├── main.py              # GUI, Screens, globaler App-Zustand
+├── minimax.py           # Generischer KI-Algorithmus (MiniMax + Alpha-Beta)
+├── pawn_chess.py        # Spiellogik Bauernschach
+├── tictactoe.py         # Spiellogik Tic-Tac-Toe (4 gewinnt)
+├── database.py          # SQLite-Datenbankzugriff
+├── auth.py              # Benutzerverwaltung & Authentifizierung
+├── test_all.py          # Unittests (TC-01 bis TC-15)
+├── requirements.txt     # Python-Abhängigkeiten (Pillow)
+├── games.db             # SQLite-Datenbankdatei (wird bei Start erstellt)
+└── Mockups/Assets/
+    ├── Background/      # Animierter GIF-Hintergrund
+    ├── Logo/            # App-Logo
+    ├── pawnchess/       # Spielfiguren Bauernschach (PNG, 100×120 px)
+    └── 4_in_a_row/      # Spielsteine 4-gewinnt (PNG, 100×100 px)
 ```
 
 ### 2.2 Abhängigkeitsdiagramm
@@ -73,18 +79,23 @@ app_state = {
 
 | Funktion | Beschreibung |
 |---|---|
-| `main()` | Einstiegspunkt: DB initialisieren, Auto-Login prüfen, Fenster starten |
+| `_ensure_dependencies()` | Installiert fehlende Pakete aus `requirements.txt` automatisch via `pip` beim Start |
+| `main()` | Einstiegspunkt: Abhängigkeiten prüfen, DB initialisieren, Auto-Login prüfen, Fenster starten |
 | `show_screen(root, build_fn)` | Screen-Wechsel: alten Frame zerstören, neuen aufbauen |
+| `_center_popup(win, root)` | Zentriert ein Toplevel-Fenster auf dem Hauptfenster und setzt den Fokus |
 | `build_login_screen()` | Login/Register-Bildschirm |
 | `build_main_menu()` | Hauptmenü mit Spielauswahl und Schwierigkeitsgrad |
 | `build_game_screen()` | Spielfeld-Bildschirm (Canvas + Status-Label) |
-| `draw_board()` | Spielfeld auf Canvas neu zeichnen |
+| `draw_board()` | Spielfeld auf Canvas neu zeichnen inkl. Neon-Gitterlinien |
+| `_load_piece_images()` | Lädt und cached PNG-Spielfiguren für Bauernschach (skaliert auf Zellgröße) |
+| `_load_ttt_images()` | Lädt und cached PNG-Spielsteine für 4-gewinnt (skaliert auf Zellgröße) |
+| `_load_gif_frames()` | Lädt GIF-Frames einmalig in den globalen Animations-Cache |
 | `on_board_click(event)` | Click-Handler: Koordinaten → Spielzug |
 | `start_ai_turn()` | Startet KI-Berechnung in einem Daemon-Thread |
 | `after_ai_turn(winner)` | Wird nach KI-Zug im Hauptthread aufgerufen (via `canvas.after`) |
 | `end_game(winner)` | Spielende: Ergebnis anzeigen und ggf. in DB speichern |
 | `show_leaderboard()` | Bestenliste als Toplevel-Popup |
-| `show_rules()` | Spielregeln als Toplevel-Popup |
+| `show_rules()` | Spielregeln als Toplevel-Popup, zentriert auf Hauptfenster |
 | `t(key)` | Übersetzungsfunktion: gibt Text in aktueller Sprache zurück |
 | `make_radio_group(parent, options, variable)` | Baut einen gestylten Schwierigkeits-Selektor aus `tk.Label`-Zeilen (◆/◇ Indikator, Hover-Effekt) als Ersatz für native `tk.Radiobutton`-Widgets |
 
@@ -493,19 +504,23 @@ python -m pytest test_all.py -v
 
 ## 7. Design & Internationalisierung
 
-### Farbschema (Dark Theme)
+### Farbschema (Synthwave Dark Theme)
 
-Das Design verwendet ein einheitliches Dunkelblau-Farbschema (definiert im `COLORS`-Dict in `main.py`):
+Das Design verwendet ein **Synthwave**-Farbschema mit animiertem GIF-Hintergrund und neon-akzentuierten Spielfeldern (definiert im `COLORS`-Dict in `main.py`):
 
 | Zweck | Farbe |
 |---|---|
 | Hintergrund dunkel | `#1a1a2e` |
 | Hintergrund mittel | `#16213e` |
-| Akzentfarbe (Rot) | `#e94560` |
+| Akzentfarbe (Pink) | `#e94560` |
 | Akzentfarbe 2 (Lila) | `#533483` |
-| Brett hell | `#eecc99` |
-| Brett dunkel | `#8b5e3c` |
-| Gültiger Zug | `#2e7d32` |
+| Brett hell | `#2d1a7a` |
+| Brett dunkel | `#0a0420` |
+| Ausgewähltes Feld | `#ff2d7a` |
+| Gültiger Zug | `#5ef3ff` |
+| Neon-Gitterlinien | `#5ef3ff` |
+
+Die Spielfiguren sind vorgerenderte PNG-Assets im Synthwave-Stil (rosa/pink für den Spieler, lila/violett für die KI). Das Spielfeld wird durch neon-cyan Gitterlinien gegliedert, die als letztes über alle Felder und Figuren gezeichnet werden.
 
 ### Benutzerdefinierte UI-Komponenten
 
@@ -535,8 +550,12 @@ Projekt-Verzeichnis/
 ├── database.py
 ├── auth.py
 ├── test_all.py
-├── games.db         ← wird bei erstem Start angelegt
-└── session.json     ← wird bei "Angemeldet bleiben" angelegt
+├── requirements.txt
+├── Mockups/Assets/          ← Bild-Assets (GIF, Logos, Spielfiguren)
+├── games.db                 ← wird bei erstem Start angelegt
+└── session.json             ← wird bei "Angemeldet bleiben" angelegt
 ```
 
 `games.db` und `session.json` sind Laufzeit-Artefakte und werden automatisch erstellt. Sie können gelöscht werden, um die Anwendung in den Ausgangszustand zurückzusetzen.
+
+Fehlende Python-Pakete (Pillow) werden beim ersten Start automatisch über `_ensure_dependencies()` installiert.

@@ -1266,8 +1266,20 @@ def end_game(winner):
 # ─────────────────────────────────────────────
 # PROGRAMMSTART
 # ─────────────────────────────────────────────
+def _ensure_dependencies():
+    """Installiert fehlende Abhängigkeiten aus requirements.txt automatisch."""
+    import subprocess, sys, os
+    req = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+    if os.path.exists(req):
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", req, "--quiet"],
+            check=False
+        )
+
+
 def main():
     """Startet die Anwendung."""
+    _ensure_dependencies()
     database.init_db()
 
     root = tk.Tk()
