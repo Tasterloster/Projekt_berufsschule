@@ -7,7 +7,7 @@ KI: MiniMax mit Alpha-Beta-Pruning
 """
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 import threading
 import math
 
@@ -60,13 +60,13 @@ COLORS = {
     "white_piece_out":   "#222222",   # Kontur Weiß-Figur
     "black_piece":       "#1a1a2e",   # Sehr dunkles Blau
     "black_piece_out":   "#aaaaaa",   # Helle Kontur Schwarz-Figur
-    # Brett: beige/braun – jetzt klar von Figuren getrennt
-    "board_light":       "#eecc99",
-    "board_dark":        "#8b5e3c",
-    "highlight":         "#e94560",
-    "highlight_out":     "#ff8080",
-    "valid_move":        "#2e7d32",
-    "valid_move_out":    "#81c784",
+    # Brett: Synthwave-Dunkelviolett
+    "board_light":       "#2d1a7a",
+    "board_dark":        "#0a0420",
+    "highlight":         "#ff2d7a",
+    "highlight_out":     "#ff7aa8",
+    "valid_move":        "#5ef3ff",
+    "valid_move_out":    "#9ef8ff",
     # TTT-Symbole
     "ttt_x":             "#64b5f6",   # Hellblau für X (Mensch)
     "ttt_o":             "#ef5350",   # Rot für O (KI)
@@ -227,10 +227,13 @@ def make_entry(parent, show=None):
     """Erstellt ein gestaltetes Eingabefeld."""
     return tk.Entry(
         parent, show=show,
-        bg=COLORS["bg_card"], fg=COLORS["text_light"],
+        bg=COLORS["bg_dark"], fg=COLORS["text_light"],
         insertbackground=COLORS["text_light"],
         font=("Segoe UI", 12), relief="flat",
-        width=22
+        width=22,
+        highlightthickness=1,
+        highlightbackground=COLORS["accent2"],
+        highlightcolor=COLORS["accent"],
     )
 
 
@@ -334,6 +337,16 @@ def show_screen(root, build_fn):
     frame.pack(fill="both", expand=True)
     app_state["current_screen"] = frame
     build_fn(root, frame)
+
+
+def _center_popup(win, root):
+    """Zentriert ein Toplevel auf dem Hauptfenster und gibt ihm den Fokus."""
+    win.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width()  - win.winfo_width())  // 2
+    y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
+    win.geometry(f"+{x}+{y}")
+    win.lift()
+    win.focus_force()
 
 
 # ─────────────────────────────────────────────
@@ -762,6 +775,8 @@ def show_rules(root, game):
 
     make_button(win, t("close"), win.destroy, width=12).pack(pady=15)
 
+    _center_popup(win, root)
+
 
 # ─────────────────────────────────────────────
 # SPIELSCREEN
@@ -772,6 +787,59 @@ PIECE_RADIUS = 26
 board_canvas = None
 status_label = None
 game_widgets = {}  # Referenzen auf dynamische Widgets
+_piece_images = {}  # Figurenbilder, einmalig geladen und gecacht (pawn chess + 4-in-a-row)
+
+
+def _load_piece_images():
+    """Lädt pawn-white.png und pawn-black.png (vorgerenderte Figuren).
+    Gibt (white_img, black_img) zurück; beide None wenn die Dateien fehlen."""
+    import os
+    for key in ("white", "black"):
+        cache_key = (key, CELL_SIZE)
+        if cache_key in _piece_images:
+            _piece_images[key] = _piece_images[cache_key]
+            continue
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "Mockups", "Assets", "pawnchess", f"pawn-{key}.png")
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path).convert("RGBA")
+            # Scale to fit within cell, preserving aspect ratio (height-constrained)
+            target_h = CELL_SIZE - 8
+            target_w = round(img.width * target_h / img.height)
+            img = img.resize((target_w, target_h), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            _piece_images[(key, CELL_SIZE)] = photo
+            _piece_images[key] = photo
+        except Exception:
+            _piece_images[(key, CELL_SIZE)] = None
+            _piece_images[key] = None
+    return _piece_images.get("white"), _piece_images.get("black")
+
+
+def _load_ttt_images():
+    """Lädt player-stone.png und ai-stone.png für 4-in-a-Row.
+    Gibt (player_img, ai_img) zurück; beide None wenn die Dateien fehlen."""
+    import os
+    for key, filename in [("ttt_player", "player-stone.png"), ("ttt_ai", "ai-stone.png")]:
+        cache_key = (key, CELL_SIZE)
+        if cache_key in _piece_images:
+            _piece_images[key] = _piece_images[cache_key]
+            continue
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "Mockups", "Assets", "4_in_a_row", filename)
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path).convert("RGBA")
+            target = CELL_SIZE - 8  # quadratisch, kein Seitenverhältnis nötig
+            img = img.resize((target, target), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            _piece_images[cache_key] = photo
+            _piece_images[key] = photo
+        except Exception:
+            _piece_images[cache_key] = None
+            _piece_images[key] = None
+    return _piece_images.get("ttt_player"), _piece_images.get("ttt_ai")
 
 
 def build_game_screen(root, frame):
@@ -811,8 +879,31 @@ def build_game_screen(root, frame):
              font=("Segoe UI", 13, "bold")).pack(side="left", padx=(0, 20))
 
     def do_abort():
-        if messagebox.askyesno(t("abort"), t("confirm_abort")):
+        dialog = tk.Toplevel(root)
+        dialog.title(t("abort"))
+        dialog.resizable(False, False)
+        dialog.configure(bg=COLORS["bg_dark"])
+        dialog.grab_set()
+
+        card = tk.Frame(dialog, bg=COLORS["bg_card"], padx=24, pady=20)
+        card.pack(padx=20, pady=20)
+
+        tk.Label(card, text=t("confirm_abort"),
+                 bg=COLORS["bg_card"], fg=COLORS["text_light"],
+                 font=("Segoe UI", 11)).pack(pady=(0, 16))
+
+        btn_row = tk.Frame(card, bg=COLORS["bg_card"])
+        btn_row.pack()
+
+        def yes():
+            dialog.destroy()
             show_screen(root, build_main_menu)
+
+        make_button(btn_row, t("abort"), yes, width=12).pack(side="left", padx=4)
+        make_button(btn_row, t("back"), dialog.destroy, width=10,
+                    bg="#444466").pack(side="left", padx=4)
+
+        _center_popup(dialog, root)
 
     btn_frame = tk.Frame(header, bg=COLORS["bg_dark"])
     btn_frame.pack(side="right", padx=10)
@@ -891,7 +982,7 @@ def draw_board():
                 cell_color = COLORS["valid_move"]
 
             # Kontur: normale Felder bekommen eine dünne Trennlinie
-            border_color = "#444444"
+            border_color = "#2a1060"
             border_width = 1
             if is_selected:
                 border_color = COLORS["highlight_out"]
@@ -912,54 +1003,57 @@ def draw_board():
             r = PIECE_RADIUS
 
             if game == "pawn_chess":
+                white_img, black_img = _load_piece_images()
                 if cell == pc.WHITE:
-                    # Weißer Bauer: reines Weiß, dunkle Kontur → sichtbar auf jedem Feld
-                    _draw_piece(board_canvas, cx, cy, r,
-                                COLORS["white_piece"], COLORS["white_piece_out"])
-                    # Kleines "W"-Symbol zur Unterscheidung
-                    board_canvas.create_text(cx, cy, text="♙",
-                                              fill=COLORS["white_piece_out"],
-                                              font=("Arial", 22, "bold"))
+                    if white_img:
+                        board_canvas.create_image(cx, cy, image=white_img, anchor="center")
+                    else:
+                        _draw_piece(board_canvas, cx, cy, r,
+                                    COLORS["white_piece"], COLORS["white_piece_out"])
+                        board_canvas.create_text(cx, cy, text="♙",
+                                                  fill=COLORS["white_piece_out"],
+                                                  font=("Arial", 22, "bold"))
                 elif cell == pc.BLACK:
-                    # Schwarzer Bauer: dunkles Blau, helle Kontur → sichtbar auf jedem Feld
-                    _draw_piece(board_canvas, cx, cy, r,
-                                COLORS["black_piece"], COLORS["black_piece_out"])
-                    board_canvas.create_text(cx, cy, text="♟",
-                                              fill=COLORS["black_piece_out"],
-                                              font=("Arial", 22, "bold"))
+                    if black_img:
+                        board_canvas.create_image(cx, cy, image=black_img, anchor="center")
+                    else:
+                        _draw_piece(board_canvas, cx, cy, r,
+                                    COLORS["black_piece"], COLORS["black_piece_out"])
+                        board_canvas.create_text(cx, cy, text="♟",
+                                                  fill=COLORS["black_piece_out"],
+                                                  font=("Arial", 22, "bold"))
 
             elif game == "tictactoe":
+                player_img, ai_img = _load_ttt_images()
                 if cell == ttt.HUMAN:
-                    # X: hellblau, breite Linien, dunkle Umrahmung → gut lesbar
-                    d = 20
-                    for dx, dy in [(1, 1), (-1, -1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill="#1a237e", width=6)
-                    for dx, dy in [(1, -1), (-1, 1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill="#1a237e", width=6)
-                    # Heller Vordergrund
-                    for dx, dy in [(1, 1), (-1, -1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill=COLORS["ttt_x"], width=3)
-                    for dx, dy in [(1, -1), (-1, 1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill=COLORS["ttt_x"], width=3)
-
+                    if player_img:
+                        board_canvas.create_image(cx, cy, image=player_img, anchor="center")
+                    else:
+                        d = 20
+                        for dx, dy in [(1, 1), (-1, -1), (1, -1), (-1, 1)]:
+                            board_canvas.create_line(
+                                cx - d * dx, cy - d * dy,
+                                cx + d * dx, cy + d * dy,
+                                fill=COLORS["ttt_x"], width=3)
                 elif cell == ttt.AI:
-                    # O: rot, breite Kontur, dunkle Schatten-Oval → gut lesbar
-                    board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
-                                              outline="#7f0000", width=6)
-                    board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
-                                              outline=COLORS["ttt_o"], width=3)
+                    if ai_img:
+                        board_canvas.create_image(cx, cy, image=ai_img, anchor="center")
+                    else:
+                        board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
+                                                  outline=COLORS["ttt_o"], width=3)
+
+    # Neon-Gitterlinien über alle Felder und Figuren zeichnen
+    board_size = CELL_SIZE * 6
+    edge = board_size - 1  # tkinter-Koordinaten enden bei width-1
+    for i in range(1, 6):  # innere Linien
+        pos = i * CELL_SIZE
+        board_canvas.create_line(pos, 0, pos, edge,
+                                  fill=COLORS["valid_move"], width=1)
+        board_canvas.create_line(0, pos, edge, pos,
+                                  fill=COLORS["valid_move"], width=1)
+    # Äußerer Rahmen als Rechteck (garantiert sichtbar an allen vier Kanten)
+    board_canvas.create_rectangle(0, 0, edge, edge,
+                                   outline=COLORS["valid_move"], width=1)
 
 
 def _draw_piece(canvas, cx, cy, r, fill, outline):
