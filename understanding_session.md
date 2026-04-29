@@ -106,6 +106,54 @@ This is better than duplicating minimax per game because the algorithm logic —
 
 ---
 
+## Q14 – Test Isolation with Temporary Database
+
+**Question:** `test_all.py` uses a `DBTestCase` base class that sets up a temporary SQLite database for each test. Why is it critical that tests use a separate temporary database rather than the real `games.db`, and what would go wrong if you ran the test suite against the live database?
+
+**Answer:** Tests insert, modify, and delete data as part of verifying behavior — running against `games.db` would pollute it with fake users and results, corrupt leaderboard data, and potentially break the app for real users. More subtly, tests depend on a known clean state: a test that checks "registering a duplicate username fails" only works reliably if that username doesn't already exist in the database. Against a live database with real data, tests could pass or fail depending on what's already there, making them non-deterministic. The temporary database is created fresh, tests run in isolation, and it's deleted on teardown — guaranteeing repeatability regardless of what's in `games.db`.
+
+---
+
+## Q15 – Procedural vs OOP Trade-offs
+
+**Question:** The entire app uses no classes for game logic (procedural style, per school requirements). What are the concrete trade-offs — what does the procedural style make harder, and what does it make easier or cleaner in this specific codebase?
+
+**Answer:** Harder: there's no natural place to encapsulate game state — the board, current turn, and move history are passed around as arguments or stored in the global `app_state` dict, which means any function can accidentally mutate shared state. Adding a third game would require threading more callbacks through `main.py` manually rather than just subclassing a `Game` base class. Easier/cleaner: the minimax callback design actually works better procedurally — pure functions with no `self` are simpler to pass as callbacks, and the lack of inheritance means there's no class hierarchy to understand before reading any single function. For a small two-game app, the procedural approach keeps the code flat and readable without the overhead of designing a class hierarchy that serves no real purpose at this scale.
+
+---
+
+## Q16 – tkinter pack() Geometry Manager
+
+**Question:** `pack()` is used almost everywhere to position widgets. Looking at the header in `build_main_menu`, you see `pack(side="left")` and `pack(side="right")`. What does `pack` actually do, and why does `side="right"` on the logout button end up on the right even though it's packed after several `side="left"` widgets?
+
+**Answer:** `pack()` is tkinter's flow-based geometry manager — it places each widget one at a time along an edge of its container, shrinking the remaining available space after each placement. `side="left"` stacks widgets left-to-right from the left edge; `side="right"` stacks from the right edge inward. They don't conflict because both sides consume from opposite ends of the same available space. The logout button ends up on the right because it claims the right edge of whatever space is left after the left-packed widgets have taken their share — order of packing determines who claims space first, and right-packed widgets claim from the right side regardless of when they were packed relative to left-packed ones.
+
+---
+
+## Q17 – Image Garbage Collection in tkinter
+
+**Question:** In `build_login_screen`, the logo image is stored as `lbl_logo.image = login_logo_img`. Why is this line necessary — what would happen without it, and what does Python's garbage collector have to do with it?
+
+**Answer:** tkinter uses Tcl/Tk under the hood, which manages image objects separately from Python. When you create an `ImageTk.PhotoImage` and assign it to a local variable, Python's garbage collector can delete the Python object once nothing in Python references it — even if Tcl/Tk is still using it to display the image. When the Python object is garbage collected, the underlying Tcl image is also destroyed, and the label renders as a blank grey box instead of the image. By assigning `lbl_logo.image = login_logo_img`, you attach a reference to the label widget itself, which survives as long as the screen is visible — keeping the image alive for as long as it's needed.
+
+---
+
+## Q18 – Screen Switching with destroy()
+
+**Question:** `show_screen()` switches screens by destroying the old frame and creating a new one. What does `destroy()` actually do to all the widgets inside — and why is this approach used instead of hiding and showing screens?
+
+**Answer:** `destroy()` recursively removes the frame and every widget inside it from memory — all labels, buttons, entries, canvases, and their event bindings are deleted. This is important because tkinter widgets are not lightweight objects; leaving old screens in memory would mean hundreds of invisible widgets accumulating as the user navigates. The hide/show alternative (`pack_forget()`) keeps widgets in memory but just makes them invisible — it would work but would leak memory over time and keep old event bindings active. Destroying and rebuilding is cleaner: each screen starts fresh with no leftover state, and memory is immediately freed.
+
+---
+
+## Q19 – tk.Canvas vs tk.Frame for the Game Board
+
+**Question:** The game board is drawn on a `tk.Canvas` using `create_rectangle()` and `create_image()`. What makes `Canvas` fundamentally different from using `tk.Frame` with `tk.Label` widgets for each cell — and why is `Canvas` the right choice here?
+
+**Answer:** A `tk.Frame` with `tk.Label` widgets creates actual widget objects for each cell — 36 separate Python/Tcl objects with their own event loops, backgrounds, and layout managers. A `tk.Canvas` is a single drawing surface where you issue draw commands that render directly as pixels — no child widgets at all. For a game board this is the right choice because: the entire board is redrawn from scratch on every move with `board_canvas.delete("all")`, which is one operation instead of 36 widget updates; pixel-precise highlighting and overlapping neon grid lines are trivial with canvas draw calls but impossible with Label grids; and mouse clicks are handled by one `<Button-1>` binding on the canvas, with the cell calculated from pixel coordinates (`event.x // CELL_SIZE`), rather than needing a binding on every cell widget.
+
+---
+
 ## Q4 – Move Generation Optimization in Tic-Tac-Toe
 
 **Question:** In `tictactoe.py`, when the board is empty, `get_valid_moves` only returns the 4 center squares instead of all 36. Why? And what would go wrong — not strategically but computationally — if it returned all 36 moves on the first turn?

@@ -21,11 +21,14 @@ import tictactoe as ttt
 # Globaler GIF-Zustand (screen-übergreifende Animation)
 # ─────────────────────────────────────────────
 _gif = {
-    "frames": [],   # ImageTk.PhotoImage-Objekte (einmalig geladen)
-    "delays": [],   # Anzeigedauer je Frame in ms
-    "idx":    0,    # aktuell angezeigter Frame-Index
-    "label":  None, # das Background-Label des aktiven Screens
-    "root":   None, # tk.Tk-Referenz für root.after()
+    "frames":     [],      # ImageTk.PhotoImage-Objekte (aktuelle Rendergröße)
+    "raw_frames": [],      # PIL Image-Objekte (verdunkelt, nicht skaliert)
+    "delays":     [],      # Anzeigedauer je Frame in ms
+    "idx":        0,       # aktuell angezeigter Frame-Index
+    "label":      None,    # das Background-Label des aktiven Screens
+    "root":       None,    # tk.Tk-Referenz für root.after()
+    "size":       (0, 0),  # aktuelle Rendergröße der PhotoImages
+    "resize_job": None,    # pending after-Job für debounced Resize
 }
 
 # ─────────────────────────────────────────────
@@ -280,9 +283,9 @@ def make_radio_group(parent, options, variable):
 
 
 def _load_gif_frames():
-    """Lädt alle GIF-Frames einmalig in _gif["frames"] (benötigt Pillow)."""
+    """Lädt alle GIF-Frames als PIL-Images (verdunkelt, nicht skaliert)."""
     try:
-        from PIL import Image, ImageTk, ImageEnhance, ImageSequence
+        from PIL import Image, ImageEnhance, ImageSequence
         import os
         gif_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "Mockups", "Assets", "Background",
@@ -290,12 +293,28 @@ def _load_gif_frames():
         gif = Image.open(gif_path)
         for gif_frame in ImageSequence.Iterator(gif):
             delay = gif_frame.info.get("duration", 100)
-            resized = gif_frame.convert("RGBA").resize((820, 700), Image.LANCZOS)
-            darkened = ImageEnhance.Brightness(resized).enhance(0.25)
-            _gif["frames"].append(ImageTk.PhotoImage(darkened))
+            darkened = ImageEnhance.Brightness(gif_frame.convert("RGBA")).enhance(0.25)
+            _gif["raw_frames"].append(darkened)
             _gif["delays"].append(max(delay, 50))
+        _gif_resize(820, 700)
     except Exception:
         pass
+
+
+def _gif_resize(w, h):
+    """Erstellt PhotoImages aller Frames in der angegebenen Größe."""
+    if not _gif["raw_frames"] or w <= 1 or h <= 1:
+        return
+    try:
+        from PIL import Image, ImageTk
+        _gif["frames"] = [
+            ImageTk.PhotoImage(f.resize((w, h), Image.LANCZOS))
+            for f in _gif["raw_frames"]
+        ]
+        _gif["size"] = (w, h)
+    except Exception:
+        pass
+    _gif["resize_job"] = None
 
 
 def _gif_tick():
@@ -314,11 +333,24 @@ def _gif_tick():
 
 def set_gif_background(frame):
     """Legt ein Hintergrund-Label im Frame an und registriert es beim globalen Animator."""
-    if not _gif["frames"]:
+    if not _gif["raw_frames"]:
         return
     bg_lbl = tk.Label(frame, bd=0, bg=COLORS["bg_dark"])
     bg_lbl.place(relx=0, rely=0, relwidth=1, relheight=1)
     _gif["label"] = bg_lbl
+
+    def _on_resize(event):
+        w, h = event.width, event.height
+        if (w, h) == _gif["size"] or w <= 1 or h <= 1:
+            return
+        if _gif["resize_job"] is not None:
+            try:
+                bg_lbl.after_cancel(_gif["resize_job"])
+            except Exception:
+                pass
+        _gif["resize_job"] = bg_lbl.after(150, lambda: _gif_resize(w, h))
+
+    bg_lbl.bind("<Configure>", _on_resize)
 
 
 def show_screen(root, build_fn):
@@ -667,21 +699,21 @@ def build_main_menu(root, frame):
         make_button(card, t("play"),
                     make_play_cmd(game_key, diff_var)).pack(pady=(10, 4))
 
-        def make_lb_cmd(gk, dv):
+        def make_lb_cmd(gk):
             # Öffnet Bestenliste
             def cmd():
-                show_leaderboard(root, gk, dv.get())
+                show_leaderboard(root, gk)
             return cmd
 
         make_button(card, t("leaderboard"),
-                    make_lb_cmd(game_key, diff_var),
+                    make_lb_cmd(game_key),
                     bg=COLORS["accent2"]).pack(pady=4)
 
 
 # ─────────────────────────────────────────────
 # BESTENLISTE
 # ─────────────────────────────────────────────
-def show_leaderboard(root, game, difficulty):
+def show_leaderboard(root, game):
     """Zeigt die Bestenliste als Popup."""
     win = tk.Toplevel(root)
     win.title(t("leaderboard"))
@@ -689,53 +721,56 @@ def show_leaderboard(root, game, difficulty):
     win.resizable(False, False)
 
     game_name = t("pawn_chess") if game == "pawn_chess" else t("tictactoe")
-    diff_names = ["", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
-    diff_name = diff_names[difficulty] if difficulty <= 5 else str(difficulty)
 
     tk.Label(win, text=t("leaderboard"),
              bg=COLORS["bg_dark"], fg=COLORS["accent"],
              font=("Segoe UI", 16, "bold")).pack(pady=(20, 4))
-    tk.Label(win, text=f"{game_name} \u2013 {t('level')}: {diff_name}",
+    tk.Label(win, text=game_name,
              bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
              font=("Segoe UI", 11)).pack(pady=(0, 12))
 
-    entries = database.get_leaderboard(game, difficulty)
+    entries = database.get_leaderboard(game)
+
 
     SEP_COLOR = "#3a3a5a"
-    COL_WIDTHS = [50, 140, 70, 80, 70]  # pixel widths: Rank, Player, Wins, Losses, Games
-    COL_HEADERS = [t("rank"), t("player"), t("wins"), t("losses"), t("games")]
+    COL_WIDTHS = [50, 120, 80, 70, 90]
+    COL_HEADERS = [t("rank"), t("player"), t("level"), t("wins"), t("losses")]
+    TOTAL_COL_WIDTH = sum(COL_WIDTHS)
 
-    # Canvas + Scrollbar for the table area
     table_container = tk.Frame(win, bg=COLORS["bg_dark"])
     table_container.pack(fill="both", expand=True, padx=20, pady=8)
 
-    # Header row
-    header_row = tk.Frame(table_container, bg=COLORS["bg_mid"])
+    # Header row mit Trennlinien
+    header_row = tk.Frame(table_container, bg=COLORS["bg_mid"], height=36)
+    header_row.pack_propagate(False)
     header_row.pack(fill="x")
-    header_cells = []
     for i, (header_text, col_w) in enumerate(zip(COL_HEADERS, COL_WIDTHS)):
         if i > 0:
-            tk.Frame(header_row, bg=SEP_COLOR, width=1).pack(
-                side="left", fill="y")
-        lbl = tk.Label(header_row, text=header_text,
-                       bg=COLORS["bg_mid"], fg=COLORS["accent"],
-                       font=("Segoe UI", 10, "bold"), anchor="center")
-        lbl.pack(side="left", fill="both", padx=0, pady=6, expand=True)
-        header_cells.append((lbl, col_w))
+            tk.Frame(header_row, bg=SEP_COLOR, width=1).pack(side="left", fill="y")
+        col_frame = tk.Frame(header_row, bg=COLORS["bg_mid"], width=col_w)
+        col_frame.pack(side="left", fill="y")
+        col_frame.pack_propagate(False)
+        tk.Label(col_frame, text=header_text,
+                 bg=COLORS["bg_mid"], fg=COLORS["accent"],
+                 font=("Segoe UI", 10, "bold"), anchor="center").pack(
+                     fill="both", expand=True, pady=6)
 
     # Scrollable data area
     data_canvas = tk.Canvas(table_container, bg=COLORS["bg_dark"],
-                            highlightthickness=0)
-    scrollbar = ttk.Scrollbar(table_container, orient="vertical",
-                              command=data_canvas.yview)
-    scroll_frame = tk.Frame(data_canvas, bg=COLORS["bg_dark"])
+                            highlightthickness=0, width=TOTAL_COL_WIDTH, height=220)
+    scroll_frame = tk.Frame(data_canvas, bg=COLORS["bg_dark"], width=TOTAL_COL_WIDTH)
 
-    scroll_frame.bind(
-        "<Configure>",
-        lambda e: data_canvas.configure(scrollregion=data_canvas.bbox("all"))
-    )
+    data_canvas.create_window((0, 0), window=scroll_frame, anchor="nw",
+                              width=TOTAL_COL_WIDTH)
 
-    data_canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+    # Gestylte tk.Scrollbar (passend zum dunklen Design)
+    scrollbar = tk.Scrollbar(table_container, orient="vertical",
+                             command=data_canvas.yview,
+                             bg=COLORS["bg_card"],
+                             troughcolor=COLORS["bg_mid"],
+                             activebackground=COLORS["accent"],
+                             highlightthickness=0,
+                             width=16)
     data_canvas.configure(yscrollcommand=scrollbar.set)
 
     if not entries:
@@ -743,44 +778,65 @@ def show_leaderboard(root, game, difficulty):
                  bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
                  font=("Segoe UI", 11)).pack(pady=30)
     else:
+        diff_names = ["–", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
         for i, entry in enumerate(entries, 1):
             bg = COLORS["bg_dark"] if i % 2 else COLORS["bg_card"]
-            row_frame = tk.Frame(scroll_frame, bg=bg)
+            row_frame = tk.Frame(scroll_frame, bg=bg, width=TOTAL_COL_WIDTH, height=28)
+            row_frame.pack_propagate(False)
             row_frame.pack(fill="x", pady=1)
+            d = entry.get("difficulty", 0)
+            diff_label = diff_names[d] if 1 <= d <= 5 else "–"
             row_vals = [
                 str(i),
                 entry["username"],
+                diff_label,
                 str(entry["wins"]),
                 str(entry["losses"]),
-                str(entry["total_games"]),
             ]
             for j, (val, col_w) in enumerate(zip(row_vals, COL_WIDTHS)):
                 if j > 0:
                     tk.Frame(row_frame, bg=SEP_COLOR, width=1).pack(
                         side="left", fill="y")
-                tk.Label(row_frame, text=val,
+                col_frame = tk.Frame(row_frame, bg=bg, width=col_w)
+                col_frame.pack(side="left", fill="y")
+                col_frame.pack_propagate(False)
+                tk.Label(col_frame, text=val,
                          bg=bg, fg=COLORS["text_light"],
-                         font=("Segoe UI", 10), anchor="center",
-                         width=col_w // 7).pack(
-                             side="left", fill="both", padx=0, pady=3, expand=True)
+                         font=("Segoe UI", 10), anchor="center").pack(
+                             fill="both", expand=True, pady=3)
 
-    # Align header cells to match data row widths
-    def align_columns():
-        data_canvas.update_idletasks()
-        canvas_w = data_canvas.winfo_width()
-        total = sum(COL_WIDTHS)
-        if total > canvas_w:
+    # Scrollbar ein-/ausblenden
+    def _toggle_scrollbar(event=None):
+        bbox = data_canvas.bbox("all")
+        if bbox:
+            data_canvas.configure(scrollregion=bbox)
+        try:
+            content_h = scroll_frame.winfo_reqheight()
+            canvas_h = data_canvas.winfo_height()
+        except Exception:
             return
-        for lbl, col_w in header_cells:
-            lbl.config(width=col_w // 7)
+        if content_h > canvas_h + 2:
+            scrollbar.pack(side="right", fill="y")
+            data_canvas.configure(yscrollcommand=scrollbar.set)
+        else:
+            scrollbar.pack_forget()
+            data_canvas.configure(yscrollcommand="")
+
+    scroll_frame.bind("<Configure>", _toggle_scrollbar)
+    data_canvas.bind("<Configure>", _toggle_scrollbar)
+
+    # Mouse-Wheel-Scroll
+    def _on_mousewheel(event):
+        data_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    data_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    win.bind("<Destroy>", lambda e: data_canvas.unbind_all("<MouseWheel>"))
 
     data_canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
-    win.after(100, align_columns)
 
     make_button(win, t("close"), win.destroy, width=12).pack(pady=16)
 
-    _center_popup(win, root)
+    win.after(50, lambda: _center_popup(win, root))
+    win.after(150, _toggle_scrollbar)
 
 
 # ─────────────────────────────────────────────
