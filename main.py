@@ -686,10 +686,8 @@ def show_leaderboard(root, game, difficulty):
     win = tk.Toplevel(root)
     win.title(t("leaderboard"))
     win.configure(bg=COLORS["bg_dark"])
-    win.geometry("450x400")
     win.resizable(False, False)
 
-    #Name und Schwierigkeit werden angezeigt
     game_name = t("pawn_chess") if game == "pawn_chess" else t("tictactoe")
     diff_names = ["", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
     diff_name = diff_names[difficulty] if difficulty <= 5 else str(difficulty)
@@ -697,63 +695,92 @@ def show_leaderboard(root, game, difficulty):
     tk.Label(win, text=t("leaderboard"),
              bg=COLORS["bg_dark"], fg=COLORS["accent"],
              font=("Segoe UI", 16, "bold")).pack(pady=(20, 4))
-    tk.Label(win, text=f"{game_name} – {t('level')}: {diff_name}",
+    tk.Label(win, text=f"{game_name} \u2013 {t('level')}: {diff_name}",
              bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
-             font=("Segoe UI", 11)).pack(pady=(0, 15))
+             font=("Segoe UI", 11)).pack(pady=(0, 12))
 
-    #Einträge aus Datenbank holen
     entries = database.get_leaderboard(game, difficulty)
 
-    SEP_COLOR = "#3a3a5a"  # dünne Trennlinie zwischen Spalten
-    COLUMNS = [
-        (t("rank"),   5),
-        (t("player"), 16),
-        (t("wins"),   6),
-        (t("losses"), 8),
-        (t("games"),  6),
-    ]
+    SEP_COLOR = "#3a3a5a"
+    COL_WIDTHS = [50, 140, 70, 80, 70]  # pixel widths: Rank, Player, Wins, Losses, Games
+    COL_HEADERS = [t("rank"), t("player"), t("wins"), t("losses"), t("games")]
 
-    # Tabellenkopf (Überschriften mittig, Trennlinien zwischen Spalten)
-    cols_frame = tk.Frame(win, bg=COLORS["bg_mid"])
-    cols_frame.pack(fill="x", padx=20)
-    for i, (col, width) in enumerate(COLUMNS):
+    # Canvas + Scrollbar for the table area
+    table_container = tk.Frame(win, bg=COLORS["bg_dark"])
+    table_container.pack(fill="both", expand=True, padx=20, pady=8)
+
+    # Header row
+    header_row = tk.Frame(table_container, bg=COLORS["bg_mid"])
+    header_row.pack(fill="x")
+    header_cells = []
+    for i, (header_text, col_w) in enumerate(zip(COL_HEADERS, COL_WIDTHS)):
         if i > 0:
-            #vertikale Trennlinie zwischen Spalten
-            tk.Frame(cols_frame, bg=SEP_COLOR, width=1).pack(
-                side="left", fill="y", pady=4)
-        tk.Label(cols_frame, text=col, width=width,
-                 bg=COLORS["bg_mid"], fg=COLORS["accent"],
-                 font=("Segoe UI", 10, "bold"), anchor="center").pack(side="left", padx=4)
+            tk.Frame(header_row, bg=SEP_COLOR, width=1).pack(
+                side="left", fill="y")
+        lbl = tk.Label(header_row, text=header_text,
+                       bg=COLORS["bg_mid"], fg=COLORS["accent"],
+                       font=("Segoe UI", 10, "bold"), anchor="center")
+        lbl.pack(side="left", fill="both", padx=0, pady=6, expand=True)
+        header_cells.append((lbl, col_w))
+
+    # Scrollable data area
+    data_canvas = tk.Canvas(table_container, bg=COLORS["bg_dark"],
+                            highlightthickness=0)
+    scrollbar = ttk.Scrollbar(table_container, orient="vertical",
+                              command=data_canvas.yview)
+    scroll_frame = tk.Frame(data_canvas, bg=COLORS["bg_dark"])
+
+    scroll_frame.bind(
+        "<Configure>",
+        lambda e: data_canvas.configure(scrollregion=data_canvas.bbox("all"))
+    )
+
+    data_canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+    data_canvas.configure(yscrollcommand=scrollbar.set)
 
     if not entries:
-        #falls keine Einträge da sind
-        tk.Label(win, text=t("no_entries"),
+        tk.Label(scroll_frame, text=t("no_entries"),
                  bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
-                 font=("Segoe UI", 11)).pack(pady=20)
+                 font=("Segoe UI", 11)).pack(pady=30)
     else:
-        #jede Zeile der Liste anzeigen
         for i, entry in enumerate(entries, 1):
-            #Hintergundfarbe abwechseln
             bg = COLORS["bg_dark"] if i % 2 else COLORS["bg_card"]
-            row_frame = tk.Frame(win, bg=bg)
-            row_frame.pack(fill="x", padx=20)
+            row_frame = tk.Frame(scroll_frame, bg=bg)
+            row_frame.pack(fill="x", pady=1)
             row_vals = [
-                (str(i),                    5),
-                (entry["username"],         16),
-                (str(entry["wins"]),         6),
-                (str(entry["losses"]),       8),
-                (str(entry["total_games"]),  6),
+                str(i),
+                entry["username"],
+                str(entry["wins"]),
+                str(entry["losses"]),
+                str(entry["total_games"]),
             ]
-            for j, (val, width) in enumerate(row_vals):
+            for j, (val, col_w) in enumerate(zip(row_vals, COL_WIDTHS)):
                 if j > 0:
                     tk.Frame(row_frame, bg=SEP_COLOR, width=1).pack(
-                        side="left", fill="y", pady=2)
-                tk.Label(row_frame, text=val, width=width,
+                        side="left", fill="y")
+                tk.Label(row_frame, text=val,
                          bg=bg, fg=COLORS["text_light"],
-                         font=("Segoe UI", 10), anchor="w").pack(side="left", padx=4, pady=3)
+                         font=("Segoe UI", 10), anchor="center",
+                         width=col_w // 7).pack(
+                             side="left", fill="both", padx=0, pady=3, expand=True)
 
-    # Schließen Button
-    make_button(win, t("close"), win.destroy, width=12).pack(pady=20)
+    # Align header cells to match data row widths
+    def align_columns():
+        data_canvas.update_idletasks()
+        canvas_w = data_canvas.winfo_width()
+        total = sum(COL_WIDTHS)
+        if total > canvas_w:
+            return
+        for lbl, col_w in header_cells:
+            lbl.config(width=col_w // 7)
+
+    data_canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+    win.after(100, align_columns)
+
+    make_button(win, t("close"), win.destroy, width=12).pack(pady=16)
+
+    _center_popup(win, root)
 
 
 # ─────────────────────────────────────────────
@@ -782,7 +809,7 @@ def show_rules(root, game):
     text_widget = tk.Text(win, bg=COLORS["bg_card"], fg=COLORS["text_light"],
                           font=("Segoe UI", 10), relief="flat",
                           padx=15, pady=15, wrap="word")
-    text_widget.pack(fill="both", expand=True, padx=20)
+    text_widget.pack(fill="both", expand=True, padx=20, pady=(0, 12))
     text_widget.insert("1.0", rules_text)
     text_widget.config(state="disabled")
 
