@@ -55,11 +55,6 @@ COLORS = {
     "accent2":           "#533483",
     "text_light":        "#eaeaea",
     "text_dim":          "#a0a0b0",
-    # Spielfiguren: deutlich verschieden von den Brettfarben
-    "white_piece":       "#ffffff",   # Reines Weiß mit dunkler Kontur
-    "white_piece_out":   "#222222",   # Kontur Weiß-Figur
-    "black_piece":       "#1a1a2e",   # Sehr dunkles Blau
-    "black_piece_out":   "#aaaaaa",   # Helle Kontur Schwarz-Figur
     # Brett: Synthwave-Dunkelviolett
     "board_light":       "#2d1a7a",
     "board_dark":        "#0a0420",
@@ -67,9 +62,6 @@ COLORS = {
     "highlight_out":     "#ff7aa8",
     "valid_move":        "#5ef3ff",
     "valid_move_out":    "#9ef8ff",
-    # TTT-Symbole
-    "ttt_x":             "#64b5f6",   # Hellblau für X (Mensch)
-    "ttt_o":             "#ef5350",   # Rot für O (KI)
     # Buttons & Status
     "btn_bg":            "#e94560",
     "btn_hover":         "#c73652",
@@ -804,8 +796,6 @@ def show_rules(root, game):
 # ─────────────────────────────────────────────
 #Größe Zelle in Pixel
 CELL_SIZE = 72
-#radius Figur
-PIECE_RADIUS = 26
 
 #globale referencen damit Funktionen zugreifen können
 board_canvas = None
@@ -1029,47 +1019,20 @@ def draw_board():
             cell = board[row][col]
             cx = x0 + CELL_SIZE // 2
             cy = y0 + CELL_SIZE // 2
-            r = PIECE_RADIUS
 
             if game == "pawn_chess":
                 white_img, black_img = _load_piece_images()
-                if cell == pc.WHITE:
-                    if white_img:
-                        board_canvas.create_image(cx, cy, image=white_img, anchor="center")
-                    else:
-                        _draw_piece(board_canvas, cx, cy, r,
-                                    COLORS["white_piece"], COLORS["white_piece_out"])
-                        board_canvas.create_text(cx, cy, text="♙",
-                                                  fill=COLORS["white_piece_out"],
-                                                  font=("Arial", 22, "bold"))
-                elif cell == pc.BLACK:
-                    if black_img:
-                        board_canvas.create_image(cx, cy, image=black_img, anchor="center")
-                    else:
-                        _draw_piece(board_canvas, cx, cy, r,
-                                    COLORS["black_piece"], COLORS["black_piece_out"])
-                        board_canvas.create_text(cx, cy, text="♟",
-                                                  fill=COLORS["black_piece_out"],
-                                                  font=("Arial", 22, "bold"))
+                if cell == pc.WHITE and white_img:
+                    board_canvas.create_image(cx, cy, image=white_img, anchor="center")
+                elif cell == pc.BLACK and black_img:
+                    board_canvas.create_image(cx, cy, image=black_img, anchor="center")
 
             elif game == "tictactoe":
                 player_img, ai_img = _load_ttt_images()
-                if cell == ttt.HUMAN:
-                    if player_img:
-                        board_canvas.create_image(cx, cy, image=player_img, anchor="center")
-                    else:
-                        d = 20
-                        for dx, dy in [(1, 1), (-1, -1), (1, -1), (-1, 1)]:
-                            board_canvas.create_line(
-                                cx - d * dx, cy - d * dy,
-                                cx + d * dx, cy + d * dy,
-                                fill=COLORS["ttt_x"], width=3)
-                elif cell == ttt.AI:
-                    if ai_img:
-                        board_canvas.create_image(cx, cy, image=ai_img, anchor="center")
-                    else:
-                        board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
-                                                  outline=COLORS["ttt_o"], width=3)
+                if cell == ttt.HUMAN and player_img:
+                    board_canvas.create_image(cx, cy, image=player_img, anchor="center")
+                elif cell == ttt.AI and ai_img:
+                    board_canvas.create_image(cx, cy, image=ai_img, anchor="center")
 
     # Neon-Gitterlinien über alle Felder und Figuren zeichnen
     board_size = CELL_SIZE * 6
@@ -1083,17 +1046,6 @@ def draw_board():
     # Äußerer Rahmen als Rechteck (garantiert sichtbar an allen vier Kanten)
     board_canvas.create_rectangle(0, 0, edge, edge,
                                    outline=COLORS["valid_move"], width=1)
-
-
-def _draw_piece(canvas, cx, cy, r, fill, outline):
-    """Zeichnet eine runde Spielfigur mit Schatten-Effekt für Tiefenwirkung."""
-    # Schatten (leicht versetzt)
-    canvas.create_oval(cx - r + 3, cy - r + 3, cx + r + 3, cy + r + 3,
-                        fill="#111111",
-                        outline="")
-    # Haupt-Oval
-    canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                        fill=fill, outline=outline, width=3)
 
 
 def on_board_click(event):
