@@ -12,7 +12,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "games.db")
 def get_connection():
     """Erstellt und gibt eine Datenbankverbindung zurück."""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn.row_factory = sqlite3.Row  # Erlaubt Spalten-Zugriff per Name und dict()-Konvertierung
     return conn
 
 
@@ -166,6 +166,20 @@ def get_user_stats(user_id, game=None):
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def update_password(username, new_password_hash):
+    """Aktualisiert den Passwort-Hash eines Benutzers."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE username = ?",
+        (new_password_hash, username)
+    )
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
 
 
 def update_user_language(user_id, language):

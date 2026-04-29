@@ -75,6 +75,21 @@ def login(username, password):
     return True, user
 
 
+def reset_password(username, new_password):
+    """
+    Setzt das Passwort eines Benutzers zurück.
+    Gibt (True, None) bei Erfolg, (False, Fehlermeldung) bei Fehler.
+    """
+    if not new_password or len(new_password) < 4:
+        return False, "Password must be at least 4 characters."
+    user = database.get_user_by_username(username.strip())
+    if user is None:
+        return False, "User not found."
+    new_hash = hash_password(new_password)
+    database.update_password(username.strip(), new_hash)
+    return True, None
+
+
 def set_current_user(user):
     """Setzt den aktuell eingeloggten Benutzer."""
     global current_user
@@ -94,7 +109,7 @@ def save_session(user_id):
         with open(SESSION_FILE, "w") as f:
             json.dump({"user_id": user_id}, f)
     except OSError:
-        pass
+        pass  # Schreibfehler (z.B. fehlende Berechtigung) sollen die App nicht beenden
 
 
 def load_session():
@@ -112,7 +127,7 @@ def load_session():
             return None
         return database.get_user_by_id(user_id)
     except (OSError, json.JSONDecodeError, KeyError):
-        return None
+        return None  # Fehlerhafte oder leere Session-Datei → Gast-Modus
 
 
 def clear_session():
@@ -121,7 +136,7 @@ def clear_session():
         if os.path.exists(SESSION_FILE):
             os.remove(SESSION_FILE)
     except OSError:
-        pass
+        pass  # Datei bereits gelöscht oder kein Zugriff – kein Absturz nötig
 
 
 def get_current_user():
