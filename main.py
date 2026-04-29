@@ -421,10 +421,8 @@ def show_forgot_password(root):
     make_button(card, t("reset_password"), do_reset).pack(fill="x", pady=(8, 0))
 
     # Fenster zentrieren
+    _center_popup(win, root)
     win.update_idletasks()
-    x = (win.winfo_screenwidth() - win.winfo_reqwidth()) // 2
-    y = (win.winfo_screenheight() - win.winfo_reqheight()) // 2
-    win.geometry(f"+{x}+{y}")
 
 
 def build_login_screen(root, frame):
