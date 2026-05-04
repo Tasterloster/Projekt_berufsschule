@@ -1,8 +1,8 @@
-# HHBKTendo Spielesammlung
+# BlitzBoard – Spielesammlung
 
 Strategiespiele-Prototyp mit MiniMax-KI — entwickelt im Rahmen von Lernfeld 5 am HHBK Düsseldorf.
 
-Die Sammlung enthält **Bauernschach** und **Tic-Tac-Toe (4 gewinnt)**, jeweils auf einem 6×6-Spielfeld gegen eine KI, die den MiniMax-Algorithmus mit Alpha-Beta-Pruning verwendet.
+Die Sammlung enthält **Bauernschach** und **Tic-Tac-Toe (4 gewinnt)**, jeweils auf einem 6×6-Spielfeld gegen eine KI, die den MiniMax-Algorithmus mit Alpha-Beta-Pruning verwendet. Das Interface verwendet ein **Synthwave-Design** mit animiertem Hintergrund und neon-beleuchteten Spielfeldern.
 
 ---
 
@@ -11,7 +11,7 @@ Die Sammlung enthält **Bauernschach** und **Tic-Tac-Toe (4 gewinnt)**, jeweils 
 - **Python 3.10 oder neuer**  
   Download: https://www.python.org/downloads/
 - **tkinter** (in der Python-Standardbibliothek enthalten)
-- Keine weiteren Abhängigkeiten — es müssen keine Pakete installiert werden.
+- **Pillow** – für Hintergrundanimation und Spielfiguren (wird beim Start automatisch installiert)
 
 ### tkinter auf macOS nachinstallieren (falls nötig)
 
@@ -29,7 +29,7 @@ sudo apt install python3-tk
 
 ## Installation und Start
 
-1. Repository klonen oder als ZIP herunterladen und entpacken:
+1. Repository klonen:
 
 ```bash
 git clone https://github.com/Tasterloster/Projekt_berufsschule.git
@@ -39,10 +39,10 @@ cd Projekt_berufsschule
 2. Anwendung starten:
 
 ```bash
-python3 main.py
+python main.py
 ```
 
-Beim ersten Start wird die Datenbankdatei `games.db` automatisch angelegt.
+Beim ersten Start werden fehlende Abhängigkeiten automatisch per `pip` installiert und die Datenbankdatei `games.db` angelegt.
 
 ---
 
@@ -51,18 +51,26 @@ Beim ersten Start wird die Datenbankdatei `games.db` automatisch angelegt.
 ```
 Projekt_berufsschule/
 │
-├── main.py          Hauptprogramm: GUI (Login, Menü, Spielscreen, Bestenliste)
-├── auth.py          Benutzerverwaltung: Registrierung, Login, Passwort-Hashing
-├── database.py      Datenbankzugriff: SQLite CRUD für Benutzer und Spielergebnisse
-├── minimax.py       Spielunabhängiger MiniMax-Algorithmus mit Alpha-Beta-Pruning
-├── pawn_chess.py    Spiellogik Bauernschach (Züge, Bewertungsfunktion)
-├── tictactoe.py     Spiellogik Tic-Tac-Toe 4-gewinnt (Züge, Bewertungsfunktion)
-├── test_all.py      Unittests (TC-01 bis TC-15 aus dem Pflichtenheft)
+├── main.py              Hauptprogramm: GUI (Login, Menü, Spielscreen, Bestenliste)
+├── auth.py              Benutzerverwaltung: Registrierung, Login, Passwort-Hashing
+├── database.py          Datenbankzugriff: SQLite CRUD für Benutzer und Spielergebnisse
+├── minimax.py           Spielunabhängiger MiniMax-Algorithmus mit Alpha-Beta-Pruning
+├── pawn_chess.py        Spiellogik Bauernschach (Züge, Bewertungsfunktion)
+├── tictactoe.py         Spiellogik Tic-Tac-Toe 4-gewinnt (Züge, Bewertungsfunktion)
+├── test_all.py          Unittests (TC-01 bis TC-15 aus dem Pflichtenheft)
+├── requirements.txt     Python-Abhängigkeiten (Pillow)
 │
-├── games.db         SQLite-Datenbank (wird automatisch erstellt)
+├── games.db             SQLite-Datenbank (wird automatisch erstellt)
 │
-├── Lastenheft/      Lastenheft des Auftraggebers
-└── Pflichtenheft/   Pflichtenheft des Projektteams
+├── Mockups/
+│   └── Assets/
+│       ├── Background/      Animierter GIF-Hintergrund
+│       ├── Logo/            App-Logo (Controller)
+│       ├── pawnchess/       Spielfiguren Bauernschach (PNG)
+│       └── 4_in_a_row/      Spielsteine 4-gewinnt (PNG)
+│
+├── Lastenheft/          Lastenheft des Auftraggebers
+└── Pflichtenheft/       Pflichtenheft des Projektteams
 ```
 
 ### Modulbeschreibungen
@@ -83,7 +91,8 @@ Projekt_berufsschule/
 ### Anmeldung
 
 Beim Start kann man sich **registrieren**, **einloggen** oder als **Gast** spielen.  
-Im Gastmodus werden keine Ergebnisse in der Bestenliste gespeichert.
+Im Gastmodus werden keine Ergebnisse in der Bestenliste gespeichert.  
+Mit der Option **Angemeldet bleiben** wird die Session beim nächsten Start automatisch wiederhergestellt.
 
 ### Spielstärke einstellen
 
@@ -99,7 +108,7 @@ Vor jedem Spiel kann die Suchtiefe der KI gewählt werden:
 
 ### Bauernschach
 
-- Figur anklicken → gültige Züge werden grün markiert
+- Figur anklicken → gültige Züge werden **cyan** markiert
 - Zielfeld anklicken → Zug ausführen
 - Ziel: einen eigenen Bauern auf die gegnerische Grundlinie bringen
 
@@ -114,7 +123,7 @@ Vor jedem Spiel kann die Suchtiefe der KI gewählt werden:
 
 ### Spiel abbrechen
 
-Über **Quit / Abbrechen** kann ein laufendes Spiel mit Bestätigungsdialog beendet werden.
+Über **Abort Game / Spiel abbrechen** kann ein laufendes Spiel mit Bestätigungsdialog beendet werden.
 
 ---
 
@@ -134,13 +143,13 @@ Die Datenbank kann mit [DB Browser for SQLite](https://sqlitebrowser.org/) oder 
 ## Tests ausführen
 
 ```bash
-python3 test_all.py
+python test_all.py
 ```
 
 Oder mit pytest (falls installiert):
 
 ```bash
-python3 -m pytest test_all.py -v
+python -m pytest test_all.py -v
 ```
 
 ---
@@ -148,8 +157,9 @@ python3 -m pytest test_all.py -v
 ## Technische Hinweise
 
 - Die Anwendung ist **prozedural** programmiert (keine Klassen für Spiellogik).
-- Der KI-Zug läuft in einem **separaten Thread**, um die GUI nicht zu blockieren (max. 45 Sekunden).
-- Buttons sind als `tk.Label` mit Event-Bindings implementiert, da `tk.Button` auf macOS die Hintergrundfarbe ignoriert.
+- Der KI-Zug läuft in einem **separaten Thread**, um die GUI nicht zu blockieren.
+- Buttons und Auswahl-Selektoren sind als `tk.Label` mit Event-Bindings implementiert, da native tkinter-Widgets (`tk.Button`, `tk.Radiobutton`) auf macOS Hintergrundfarben ignorieren.
+- Fehlende Python-Pakete werden beim Start automatisch über `pip install -r requirements.txt` nachinstalliert.
 - Zielplattform laut Lastenheft: **Windows 10/11**. Die Anwendung läuft ebenfalls unter macOS und Linux.
 
 ---

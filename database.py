@@ -12,7 +12,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "games.db")
 def get_connection():
     """Erstellt und gibt eine Datenbankverbindung zurück."""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn.row_factory = sqlite3.Row  # Erlaubt Spalten-Zugriff per Name und dict()-Konvertierung
     return conn
 
 
@@ -116,26 +116,27 @@ def save_result(user_id, game, difficulty, won):
     conn.close()
 
 
-def get_leaderboard(game, difficulty, limit=10):
+def get_leaderboard(game, limit=50):
     """
-    Gibt die Bestenliste für ein bestimmtes Spiel und Schwierigkeitsgrad zurück (LD4220).
-    Sortiert nach Siegen absteigend.
+    Gibt die Bestenliste für ein bestimmtes Spiel zurück (LD4220).
+    Eine Zeile pro (Spieler, Schwierigkeitsgrad). Sortiert nach Schwierigkeit
+    absteigend, bei gleicher Stufe nach Siegen absteigend.
     """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT
             u.username,
+            r.difficulty,
             SUM(r.won) AS wins,
-            SUM(1 - r.won) AS losses,
-            COUNT(*) AS total_games
+            SUM(1 - r.won) AS losses
         FROM results r
         JOIN users u ON r.user_id = u.id
-        WHERE r.game = ? AND r.difficulty = ?
-        GROUP BY r.user_id
-        ORDER BY wins DESC, losses ASC
+        WHERE r.game = ?
+        GROUP BY r.user_id, r.difficulty
+        ORDER BY r.difficulty DESC, wins DESC, losses ASC
         LIMIT ?
-    """, (game, difficulty, limit))
+    """, (game, limit))
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -166,6 +167,20 @@ def get_user_stats(user_id, game=None):
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def update_password(username, new_password_hash):
+    """Aktualisiert den Passwort-Hash eines Benutzers."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE username = ?",
+        (new_password_hash, username)
+    )
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
 
 
 def update_user_language(user_id, language):

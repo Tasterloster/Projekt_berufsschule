@@ -7,7 +7,7 @@ KI: MiniMax mit Alpha-Beta-Pruning
 """
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 import threading
 import math
 
@@ -16,6 +16,20 @@ import auth
 import minimax as mm
 import pawn_chess as pc
 import tictactoe as ttt
+
+# ─────────────────────────────────────────────
+# Globaler GIF-Zustand (screen-übergreifende Animation)
+# ─────────────────────────────────────────────
+_gif = {
+    "frames":     [],      # ImageTk.PhotoImage-Objekte (aktuelle Rendergröße)
+    "raw_frames": [],      # PIL Image-Objekte (verdunkelt, nicht skaliert)
+    "delays":     [],      # Anzeigedauer je Frame in ms
+    "idx":        0,       # aktuell angezeigter Frame-Index
+    "label":      None,    # das Background-Label des aktiven Screens
+    "root":       None,    # tk.Tk-Referenz für root.after()
+    "size":       (0, 0),  # aktuelle Rendergröße der PhotoImages
+    "resize_job": None,    # pending after-Job für debounced Resize
+}
 
 # ─────────────────────────────────────────────
 # Globaler App-Zustand
@@ -44,21 +58,13 @@ COLORS = {
     "accent2":           "#533483",
     "text_light":        "#eaeaea",
     "text_dim":          "#a0a0b0",
-    # Spielfiguren: deutlich verschieden von den Brettfarben
-    "white_piece":       "#ffffff",   # Reines Weiß mit dunkler Kontur
-    "white_piece_out":   "#222222",   # Kontur Weiß-Figur
-    "black_piece":       "#1a1a2e",   # Sehr dunkles Blau
-    "black_piece_out":   "#aaaaaa",   # Helle Kontur Schwarz-Figur
-    # Brett: beige/braun – jetzt klar von Figuren getrennt
-    "board_light":       "#eecc99",
-    "board_dark":        "#8b5e3c",
-    "highlight":         "#e94560",
-    "highlight_out":     "#ff8080",
-    "valid_move":        "#2e7d32",
-    "valid_move_out":    "#81c784",
-    # TTT-Symbole
-    "ttt_x":             "#64b5f6",   # Hellblau für X (Mensch)
-    "ttt_o":             "#ef5350",   # Rot für O (KI)
+    # Brett: Synthwave-Dunkelviolett
+    "board_light":       "#2d1a7a",
+    "board_dark":        "#0a0420",
+    "highlight":         "#ff2d7a",
+    "highlight_out":     "#ff7aa8",
+    "valid_move":        "#5ef3ff",
+    "valid_move_out":    "#9ef8ff",
     # Buttons & Status
     "btn_bg":            "#e94560",
     "btn_hover":         "#c73652",
@@ -112,6 +118,12 @@ TEXTS = {
         "confirm_abort": "Abort the current game?",
         "level": "Level",
         "keep_logged_in": "Keep me logged in",
+        "forgot_password": "Forgot password?",
+        "reset_password": "Reset Password",
+        "new_password": "New Password",
+        "confirm_password": "Confirm Password",
+        "passwords_no_match": "Passwords do not match.",
+        "password_reset_ok": "Password reset. You can now log in.",
     },
     "de": {
         "title": "HHBKTendo Spielesammlung",
@@ -153,6 +165,12 @@ TEXTS = {
         "confirm_abort": "Das aktuelle Spiel abbrechen?",
         "level": "Level",
         "keep_logged_in": "Angemeldet bleiben",
+        "forgot_password": "Passwort vergessen?",
+        "reset_password": "Passwort zurücksetzen",
+        "new_password": "Neues Passwort",
+        "confirm_password": "Passwort bestätigen",
+        "passwords_no_match": "Passwörter stimmen nicht überein.",
+        "password_reset_ok": "Passwort zurückgesetzt. Du kannst dich jetzt anmelden.",
     }
 }
 
@@ -160,7 +178,7 @@ TEXTS = {
 def t(key):
     """Gibt den übersetzten Text für den aktuellen Sprachcode zurück."""
     lang = app_state["language"]
-    return TEXTS.get(lang, TEXTS["en"]).get(key, key)
+    return TEXTS.get(lang, TEXTS["en"]).get(key, key) #falls Sprache nicht gefunden wird, nimm Englisch; Falls key fehlt, gib selber einen
 
 
 # ─────────────────────────────────────────────
@@ -176,15 +194,15 @@ def make_button(parent, text, command, width=18, bg=None, fg=None):
     """Erstellt einen gestalteten Button (Label-basiert, funktioniert auf macOS)."""
     bg = bg or COLORS["btn_bg"]
     fg = fg or COLORS["btn_text"]
-    hover_bg = COLORS["btn_hover"] if bg == COLORS["btn_bg"] else bg
+    hover_bg = COLORS["btn_hover"] if bg == COLORS["btn_bg"] else bg # nur ändern, wenn Standart verwendet wird
     btn = tk.Label(
         parent, text=text,
         bg=bg, fg=fg, font=("Segoe UI", 11, "bold"),
         cursor="hand2", width=width,
         pady=6, padx=8
     )
-    btn.bind("<Button-1>", lambda e: command())
-    btn.bind("<Enter>",    lambda e: btn.config(bg=hover_bg))
+    btn.bind("<Button-1>", lambda e: command()) #löst command funktion aus mit linksklick
+    btn.bind("<Enter>",    lambda e: btn.config(bg=hover_bg)) #hover Effekt, Hintergrundfarbe ändern
     btn.bind("<Leave>",    lambda e: btn.config(bg=bg))
     return btn
 
@@ -204,15 +222,139 @@ def make_entry(parent, show=None):
     """Erstellt ein gestaltetes Eingabefeld."""
     return tk.Entry(
         parent, show=show,
-        bg=COLORS["bg_card"], fg=COLORS["text_light"],
+        bg=COLORS["bg_dark"], fg=COLORS["text_light"],
         insertbackground=COLORS["text_light"],
         font=("Segoe UI", 12), relief="flat",
-        width=22
+        width=22,
+        highlightthickness=1,
+        highlightbackground=COLORS["accent2"],
+        highlightcolor=COLORS["accent"],
     )
 
 
+def make_radio_group(parent, options, variable):
+    """Ersetzt tk.Radiobutton durch gestylte, klickbare Zeilen."""
+    entries = {}
+
+    def refresh(selected_val):
+        for v, (rf, dl, tl) in entries.items():
+            if v == selected_val:
+                rf.config(bg=COLORS["bg_mid"])
+                dl.config(text="◆", fg=COLORS["accent"], bg=COLORS["bg_mid"])
+                tl.config(fg=COLORS["text_light"], font=("Segoe UI", 9, "bold"), bg=COLORS["bg_mid"])
+            else:
+                rf.config(bg=COLORS["bg_card"])
+                dl.config(text="◇", fg=COLORS["text_dim"], bg=COLORS["bg_card"])
+                tl.config(fg=COLORS["text_dim"], font=("Segoe UI", 9), bg=COLORS["bg_card"])
+
+    for val, label_text in options:
+        row = tk.Frame(parent, bg=COLORS["bg_card"], cursor="hand2")
+        row.pack(fill="x", pady=1)
+        dot = tk.Label(row, text="◇", bg=COLORS["bg_card"],
+                       fg=COLORS["text_dim"], font=("Segoe UI", 9), cursor="hand2")
+        dot.pack(side="left", padx=(6, 4), pady=2)
+        txt = tk.Label(row, text=label_text, bg=COLORS["bg_card"],
+                       fg=COLORS["text_dim"], font=("Segoe UI", 9), cursor="hand2")
+        txt.pack(side="left", pady=2)
+        entries[val] = (row, dot, txt)
+
+        def on_click(v=val):
+            variable.set(v)
+            refresh(v)
+
+        def on_enter(e, v=val, rf=row, dl=dot, tl=txt):
+            if variable.get() != v:
+                rf.config(bg=COLORS["bg_mid"])
+                dl.config(bg=COLORS["bg_mid"])
+                tl.config(bg=COLORS["bg_mid"])
+
+        def on_leave(e, v=val, rf=row, dl=dot, tl=txt):
+            if variable.get() != v:
+                rf.config(bg=COLORS["bg_card"])
+                dl.config(bg=COLORS["bg_card"])
+                tl.config(bg=COLORS["bg_card"])
+
+        for widget in (row, dot, txt):
+            widget.bind("<Button-1>", lambda e, v=val: on_click(v))
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
+
+    refresh(variable.get())
+
+
+def _load_gif_frames():
+    """Lädt alle GIF-Frames als PIL-Images (verdunkelt, nicht skaliert)."""
+    try:
+        from PIL import Image, ImageEnhance, ImageSequence
+        import os
+        gif_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "Mockups", "Assets", "Background",
+                                "6m2ocolc0ip91.gif")
+        gif = Image.open(gif_path)
+        for gif_frame in ImageSequence.Iterator(gif):
+            delay = gif_frame.info.get("duration", 100)
+            darkened = ImageEnhance.Brightness(gif_frame.convert("RGBA")).enhance(0.25)
+            _gif["raw_frames"].append(darkened)
+            _gif["delays"].append(max(delay, 50))
+        _gif_resize(820, 700)
+    except Exception:
+        pass
+
+
+def _gif_resize(w, h):
+    """Erstellt PhotoImages aller Frames in der angegebenen Größe."""
+    if not _gif["raw_frames"] or w <= 1 or h <= 1:
+        return
+    try:
+        from PIL import Image, ImageTk
+        _gif["frames"] = [
+            ImageTk.PhotoImage(f.resize((w, h), Image.LANCZOS))
+            for f in _gif["raw_frames"]
+        ]
+        _gif["size"] = (w, h)
+    except Exception:
+        pass
+    _gif["resize_job"] = None
+
+
+def _gif_tick():
+    """Globaler Animations-Takt – läuft unabhängig vom aktiven Screen über root.after()."""
+    if not _gif["frames"] or _gif["root"] is None:
+        return
+    lbl = _gif["label"]
+    if lbl is not None:
+        try:
+            lbl.config(image=_gif["frames"][_gif["idx"]])
+        except tk.TclError:
+            _gif["label"] = None  # Label wurde zerstört – kein Problem, nächster Screen registriert neu
+    _gif["idx"] = (_gif["idx"] + 1) % len(_gif["frames"])
+    _gif["root"].after(_gif["delays"][_gif["idx"]], _gif_tick)
+
+
+def set_gif_background(frame):
+    """Legt ein Hintergrund-Label im Frame an und registriert es beim globalen Animator."""
+    if not _gif["raw_frames"]:
+        return
+    bg_lbl = tk.Label(frame, bd=0, bg=COLORS["bg_dark"])
+    bg_lbl.place(relx=0, rely=0, relwidth=1, relheight=1)
+    _gif["label"] = bg_lbl
+
+    def _on_resize(event):
+        w, h = event.width, event.height
+        if (w, h) == _gif["size"] or w <= 1 or h <= 1:
+            return
+        if _gif["resize_job"] is not None:
+            try:
+                bg_lbl.after_cancel(_gif["resize_job"])
+            except Exception:
+                pass
+        _gif["resize_job"] = bg_lbl.after(150, lambda: _gif_resize(w, h))
+
+    bg_lbl.bind("<Configure>", _on_resize)
+
+
 def show_screen(root, build_fn):
-    """Wechselt zum neuen Screen, zerstört den alten."""
+    """Wechselt zum neuen Screen, zerstört den alten. Erstellt neuen Frame. ruft übergeben build_fn auf für Inhaltsaufbau"""
     if app_state["current_screen"]:
         app_state["current_screen"].destroy()
     frame = tk.Frame(root, bg=COLORS["bg_dark"])
@@ -221,24 +363,114 @@ def show_screen(root, build_fn):
     build_fn(root, frame)
 
 
+def _center_popup(win, root):
+    """Zentriert ein Toplevel auf dem Hauptfenster und gibt ihm den Fokus."""
+    win.update_idletasks()
+    x = root.winfo_x() + (root.winfo_width()  - win.winfo_width())  // 2
+    y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
+    win.geometry(f"+{x}+{y}")
+    win.lift()
+    win.focus_force()
+
+
 # ─────────────────────────────────────────────
 # LOGIN / REGISTER SCREEN
 # ─────────────────────────────────────────────
+def show_forgot_password(root):
+    """Öffnet den Passwort-zurücksetzen-Dialog als Toplevel."""
+    win = tk.Toplevel()
+    win.title(t("reset_password"))
+    win.resizable(False, False)
+    win.configure(bg=COLORS["bg_dark"])
+    win.grab_set()
+
+    card = tk.Frame(win, bg=COLORS["bg_card"], padx=30, pady=24)
+    card.pack(padx=20, pady=20)
+
+    tk.Label(card, text=t("reset_password"),
+             bg=COLORS["bg_card"], fg=COLORS["accent"],
+             font=("Segoe UI", 14, "bold")).pack(pady=(0, 16))
+
+    make_label(card, t("username"), size=10).pack(anchor="w")
+    entry_user = make_entry(card)
+    entry_user.pack(pady=(2, 10), fill="x")
+
+    make_label(card, t("new_password"), size=10).pack(anchor="w")
+    entry_pw1 = make_entry(card, show="*")
+    entry_pw1.pack(pady=(2, 10), fill="x")
+
+    make_label(card, t("confirm_password"), size=10).pack(anchor="w")
+    entry_pw2 = make_entry(card, show="*")
+    entry_pw2.pack(pady=(2, 12), fill="x")
+
+    lbl_msg = tk.Label(card, text="", bg=COLORS["bg_card"],
+                       fg=COLORS["accent"], font=("Segoe UI", 10), wraplength=260)
+    lbl_msg.pack()
+
+    def do_reset():
+        if entry_pw1.get() != entry_pw2.get():
+            lbl_msg.config(text=t("passwords_no_match"), fg=COLORS["accent"])
+            return
+        ok, err = auth.reset_password(entry_user.get(), entry_pw1.get())
+        if ok:
+            lbl_msg.config(text=t("password_reset_ok"), fg=COLORS["win"])
+            win.after(2000, win.destroy)
+        else:
+            lbl_msg.config(text=err, fg=COLORS["accent"])
+
+    make_button(card, t("reset_password"), do_reset).pack(fill="x", pady=(8, 0))
+
+    # Fenster zentrieren
+    _center_popup(win, root)
+    win.update_idletasks()
+
+
 def build_login_screen(root, frame):
     """Baut den Login/Register-Screen."""
-    # Header
-    tk.Label(
-        frame, text="BlitzBoard",
-        bg=COLORS["bg_dark"], fg=COLORS["accent"],
-        font=("Segoe UI", 28, "bold")
-    ).pack(pady=(40, 4))
-    tk.Label(
-        frame, text=t("title"),
-        bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
-        font=("Segoe UI", 13)
-    ).pack(pady=(0, 30))
+    set_gif_background(frame)
 
-    # Card
+    # Header: Logo links + Titel rechts, vertikal zentriert
+    header_row = tk.Frame(frame, bg=COLORS["bg_dark"])
+    header_row.pack(pady=(40, 30))
+
+    login_logo_img = None
+    try:
+        from PIL import Image, ImageTk
+        import os
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "Mockups", "Assets", "Logo",
+                                 "Only_Controller_Logo_HHBKTendo.png")
+        logo_pil = Image.open(logo_path).convert("RGBA")
+        pixels = logo_pil.load()
+        bg_color = pixels[0, 0][:3]
+        for y in range(logo_pil.height):
+            for x in range(logo_pil.width):
+                r, g, b, a = pixels[x, y]
+                if all(abs(int(c) - int(bg)) <= 30 for c, bg in zip((r, g, b), bg_color)):
+                    pixels[x, y] = (r, g, b, 0)
+        target_h = 72
+        target_w = int(logo_pil.width * target_h / logo_pil.height)
+        logo_pil = logo_pil.resize((target_w, target_h), Image.LANCZOS)
+        login_logo_img = ImageTk.PhotoImage(logo_pil)
+    except Exception:
+        pass
+
+    if login_logo_img:
+        lbl_logo = tk.Label(header_row, image=login_logo_img, bg=COLORS["bg_dark"])
+        lbl_logo.image = login_logo_img
+        lbl_logo.pack(side="left", padx=(0, 16))
+
+    text_col = tk.Frame(header_row, bg=COLORS["bg_dark"])
+    text_col.pack(side="left")
+    tk.Label(text_col, text="BlitzBoard",
+             bg=COLORS["bg_dark"], fg=COLORS["accent"],
+             font=("Segoe UI", 28, "bold")).pack(anchor="w")
+    #Untertitel
+    tk.Label(text_col, text=t("title"),
+             bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
+             font=("Segoe UI", 13)).pack(anchor="w")
+
+    # Card: zenntrierter Bereich für Eingabe und Buttons
     card = tk.Frame(frame, bg=COLORS["bg_card"], padx=30, pady=30)
     card.pack(padx=40, pady=10)
 
@@ -270,6 +502,7 @@ def build_login_screen(root, frame):
     ).pack(anchor="w", pady=(4, 8))
 
     def do_login():
+        #Anmeldeversuch: User wird gesetzt, Sprache Übernommen, Session gespeichert, wechsel ins Hauptmenü
         ok, result = auth.login(entry_user.get(), entry_pass.get())
         if ok:
             auth.set_current_user(result)
@@ -283,6 +516,7 @@ def build_login_screen(root, frame):
             lbl_error.config(text=result)
 
     def do_register():
+        #registriert neuen User
         ok, result = auth.register(entry_user.get(), entry_pass.get(), app_state["language"])
         if ok:
             ok2, user = auth.login(entry_user.get(), entry_pass.get())
@@ -296,12 +530,21 @@ def build_login_screen(root, frame):
             lbl_error.config(text=result)
 
     def do_guest():
+        #Gastmodus
         auth.logout()
         show_screen(root, build_main_menu)
 
     make_button(card, t("login"), do_login).pack(fill="x", pady=(8, 4))
     make_button(card, t("register"), do_register,
                 bg=COLORS["accent2"]).pack(fill="x", pady=4)
+
+    forgot_lbl = tk.Label(card, text=t("forgot_password"),
+                          bg=COLORS["bg_card"], fg=COLORS["text_dim"],
+                          font=("Segoe UI", 9), cursor="hand2")
+    forgot_lbl.pack(anchor="e", pady=(2, 0))
+    forgot_lbl.bind("<Button-1>", lambda e: show_forgot_password(root))
+    forgot_lbl.bind("<Enter>", lambda e: forgot_lbl.config(fg=COLORS["text_light"]))
+    forgot_lbl.bind("<Leave>", lambda e: forgot_lbl.config(fg=COLORS["text_dim"]))
 
     # Trennlinie
     tk.Frame(card, bg=COLORS["text_dim"], height=1).pack(fill="x", pady=12)
@@ -316,7 +559,7 @@ def build_login_screen(root, frame):
 
     lang_btn = tk.Label(
         frame, text="DE / EN",
-        bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
+        bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
         font=("Segoe UI", 9), cursor="hand2", padx=6, pady=4
     )
     lang_btn.bind("<Button-1>", lambda e: toggle_lang())
@@ -328,48 +571,95 @@ def build_login_screen(root, frame):
 # ─────────────────────────────────────────────
 def build_main_menu(root, frame):
     """Baut das Hauptmenü."""
+    set_gif_background(frame)
+
     user = auth.get_current_user()
     name = user["username"] if user else "Guest"
 
-    # Header
-    header = tk.Frame(frame, bg=COLORS["bg_mid"], pady=12)
+    # Header (bg_dark = transparent zum GIF)
+    header = tk.Frame(frame, bg=COLORS["bg_dark"], pady=12)
     header.pack(fill="x")
+
+    # Controller-Logo links neben HHBKTendo
+    logo_img = None
+    try:
+        from PIL import Image, ImageTk
+        import os
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "Mockups", "Assets", "Logo", "Only_Controller_Logo_HHBKTendo.png")
+        logo_pil = Image.open(logo_path).convert("RGBA")
+
+        # Hintergrundfarbe (Eckpixel oben-links) transparent machen
+        pixels = logo_pil.load()
+        bg_color = pixels[0, 0][:3]  # RGB des Hintergrunds
+        tolerance = 30               # Farbtoleranz für leichte Verläufe
+        for y in range(logo_pil.height):
+            for x in range(logo_pil.width):
+                r, g, b, a = pixels[x, y]
+                if all(abs(int(c) - int(bg)) <= tolerance for c, bg in zip((r, g, b), bg_color)):
+                    pixels[x, y] = (r, g, b, 0)  # transparent
+
+        # Auf Header-Höhe skalieren, Seitenverhältnis beibehalten
+        target_h = 44
+        target_w = int(logo_pil.width * target_h / logo_pil.height)
+        logo_pil = logo_pil.resize((target_w, target_h), Image.LANCZOS)
+        logo_img = ImageTk.PhotoImage(logo_pil)
+    except Exception:
+        pass
+
+    if logo_img:
+        lbl_logo = tk.Label(header, image=logo_img, bg=COLORS["bg_dark"])
+        lbl_logo.image = logo_img  # Referenz halten, sonst löscht Garbage Collector das Bild
+        lbl_logo.pack(side="left", padx=(12, 4))
+    else:
+        tk.Label(header, text="🎮",
+                 bg=COLORS["bg_dark"], font=("Segoe UI", 20)).pack(side="left", padx=(16, 2))
+
     tk.Label(header, text="HHBKTendo",
-             bg=COLORS["bg_mid"], fg=COLORS["accent"],
-             font=("Segoe UI", 20, "bold")).pack(side="left", padx=20)
+             bg=COLORS["bg_dark"], fg=COLORS["accent"],
+             font=("Segoe UI", 20, "bold")).pack(side="left", padx=(0, 4))
     tk.Label(header, text=f"  {name}",
-             bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
+             bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
              font=("Segoe UI", 11)).pack(side="left")
 
     def do_logout():
+        #Abmelden
         auth.logout()
         show_screen(root, build_login_screen)
 
     def toggle_lang():
+        #Sprache in datenbank aktualisieren
         app_state["language"] = "de" if app_state["language"] == "en" else "en"
         if user:
             database.update_user_language(user["id"], app_state["language"])
         show_screen(root, build_main_menu)
 
+    #Sprachumschalter oben rechts
     lang_btn = tk.Label(
         header, text="DE/EN",
-        bg=COLORS["bg_mid"], fg=COLORS["text_dim"],
+        bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
         font=("Segoe UI", 9), cursor="hand2", padx=6, pady=4
     )
     lang_btn.bind("<Button-1>", lambda e: toggle_lang())
     lang_btn.pack(side="right", padx=5)
 
+    #Logout Butten nur wenn eingeloggt
     if user:
         make_button(header, t("logout"), do_logout, width=10,
-                    bg=COLORS["bg_mid"], fg=COLORS["text_dim"]).pack(side="right", padx=10)
+                    bg=COLORS["bg_dark"], fg=COLORS["text_dim"]).pack(side="right", padx=10)
+    else:
+        make_button(header, t("login"),
+                    lambda: show_screen(root, build_login_screen), width=10,
+                    bg=COLORS["bg_dark"], fg=COLORS["text_dim"]).pack(side="right", padx=10)
 
     # Titel
     make_label(frame, t("select_game"), size=16, bold=True).pack(pady=(30, 10))
 
-    # Spielauswahl-Karten
+    # Spielauswahl-Karten: Frames/Container erstellen
     games_frame = tk.Frame(frame, bg=COLORS["bg_dark"])
     games_frame.pack(pady=10)
 
+    # jedes Spiel mit Titel, Schwierigkeit und button
     for game_key, label in [("pawn_chess", t("pawn_chess")),
                               ("tictactoe", t("tictactoe"))]:
         card = tk.Frame(games_frame, bg=COLORS["bg_card"], padx=20, pady=20)
@@ -388,19 +678,16 @@ def build_main_menu(root, frame):
             (1, t("easy")), (2, t("medium")), (3, t("hard")),
             (4, t("expert")), (5, t("master"))
         ]
+        #IntVar speichert Stufe
         diff_var = tk.IntVar(value=3)
         diff_frame = tk.Frame(card, bg=COLORS["bg_card"])
         diff_frame.pack(pady=6)
-        for val, lbl in diff_levels:
-            tk.Radiobutton(
-                diff_frame, text=lbl, variable=diff_var, value=val,
-                bg=COLORS["bg_card"], fg=COLORS["text_light"],
-                selectcolor=COLORS["accent2"],
-                activebackground=COLORS["bg_card"],
-                font=("Segoe UI", 9)
-            ).pack(anchor="w")
+        make_radio_group(diff_frame, diff_levels, diff_var)
 
+        # Factory-Funktion: verhindert, dass alle Schleifendurchläufe
+        # dieselbe Variable referenzieren (Closure-over-loop-variable-Problem)
         def make_play_cmd(gk, dv):
+            #Bei Play wird game gestartet
             def cmd():
                 app_state["game"] = gk
                 app_state["difficulty"] = dv.get()
@@ -410,85 +697,144 @@ def build_main_menu(root, frame):
         make_button(card, t("play"),
                     make_play_cmd(game_key, diff_var)).pack(pady=(10, 4))
 
-        def make_lb_cmd(gk, dv):
+        def make_lb_cmd(gk):
+            # Öffnet Bestenliste
             def cmd():
-                show_leaderboard(root, gk, dv.get())
+                show_leaderboard(root, gk)
             return cmd
 
         make_button(card, t("leaderboard"),
-                    make_lb_cmd(game_key, diff_var),
+                    make_lb_cmd(game_key),
                     bg=COLORS["accent2"]).pack(pady=4)
 
 
 # ─────────────────────────────────────────────
 # BESTENLISTE
 # ─────────────────────────────────────────────
-def show_leaderboard(root, game, difficulty):
+def show_leaderboard(root, game):
     """Zeigt die Bestenliste als Popup."""
     win = tk.Toplevel(root)
     win.title(t("leaderboard"))
     win.configure(bg=COLORS["bg_dark"])
-    win.geometry("450x400")
     win.resizable(False, False)
 
     game_name = t("pawn_chess") if game == "pawn_chess" else t("tictactoe")
-    diff_names = ["", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
-    diff_name = diff_names[difficulty] if difficulty <= 5 else str(difficulty)
 
     tk.Label(win, text=t("leaderboard"),
              bg=COLORS["bg_dark"], fg=COLORS["accent"],
              font=("Segoe UI", 16, "bold")).pack(pady=(20, 4))
-    tk.Label(win, text=f"{game_name} – {t('level')}: {diff_name}",
+    tk.Label(win, text=game_name,
              bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
-             font=("Segoe UI", 11)).pack(pady=(0, 15))
+             font=("Segoe UI", 11)).pack(pady=(0, 12))
 
-    entries = database.get_leaderboard(game, difficulty)
+    entries = database.get_leaderboard(game)
 
-    SEP_COLOR = "#3a3a5a"  # dünne Trennlinie zwischen Spalten
-    COLUMNS = [
-        (t("rank"),   5),
-        (t("player"), 16),
-        (t("wins"),   6),
-        (t("losses"), 8),
-        (t("games"),  6),
-    ]
 
-    # Tabellenkopf (Überschriften mittig, Trennlinien zwischen Spalten)
-    cols_frame = tk.Frame(win, bg=COLORS["bg_mid"])
-    cols_frame.pack(fill="x", padx=20)
-    for i, (col, width) in enumerate(COLUMNS):
+    SEP_COLOR = "#3a3a5a"
+    COL_WIDTHS = [50, 120, 80, 70, 90]
+    COL_HEADERS = [t("rank"), t("player"), t("level"), t("wins"), t("losses")]
+    TOTAL_COL_WIDTH = sum(COL_WIDTHS)
+
+    table_container = tk.Frame(win, bg=COLORS["bg_dark"])
+    table_container.pack(fill="both", expand=True, padx=20, pady=8)
+
+    # Header row mit Trennlinien
+    header_row = tk.Frame(table_container, bg=COLORS["bg_mid"], height=36)
+    header_row.pack_propagate(False)
+    header_row.pack(fill="x")
+    for i, (header_text, col_w) in enumerate(zip(COL_HEADERS, COL_WIDTHS)):
         if i > 0:
-            tk.Frame(cols_frame, bg=SEP_COLOR, width=1).pack(
-                side="left", fill="y", pady=4)
-        tk.Label(cols_frame, text=col, width=width,
+            tk.Frame(header_row, bg=SEP_COLOR, width=1).pack(side="left", fill="y")
+        col_frame = tk.Frame(header_row, bg=COLORS["bg_mid"], width=col_w)
+        col_frame.pack(side="left", fill="y")
+        col_frame.pack_propagate(False)
+        tk.Label(col_frame, text=header_text,
                  bg=COLORS["bg_mid"], fg=COLORS["accent"],
-                 font=("Segoe UI", 10, "bold"), anchor="center").pack(side="left", padx=4)
+                 font=("Segoe UI", 10, "bold"), anchor="center").pack(
+                     fill="both", expand=True, pady=6)
+
+    # Scrollable data area
+    data_canvas = tk.Canvas(table_container, bg=COLORS["bg_dark"],
+                            highlightthickness=0, width=TOTAL_COL_WIDTH, height=220)
+    scroll_frame = tk.Frame(data_canvas, bg=COLORS["bg_dark"], width=TOTAL_COL_WIDTH)
+
+    data_canvas.create_window((0, 0), window=scroll_frame, anchor="nw",
+                              width=TOTAL_COL_WIDTH)
+
+    # Gestylte tk.Scrollbar (passend zum dunklen Design)
+    scrollbar = tk.Scrollbar(table_container, orient="vertical",
+                             command=data_canvas.yview,
+                             bg=COLORS["bg_card"],
+                             troughcolor=COLORS["bg_mid"],
+                             activebackground=COLORS["accent"],
+                             highlightthickness=0,
+                             width=16)
+    data_canvas.configure(yscrollcommand=scrollbar.set)
 
     if not entries:
-        tk.Label(win, text=t("no_entries"),
+        tk.Label(scroll_frame, text=t("no_entries"),
                  bg=COLORS["bg_dark"], fg=COLORS["text_dim"],
-                 font=("Segoe UI", 11)).pack(pady=20)
+                 font=("Segoe UI", 11)).pack(pady=30)
     else:
+        diff_names = ["–", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
         for i, entry in enumerate(entries, 1):
             bg = COLORS["bg_dark"] if i % 2 else COLORS["bg_card"]
-            row_frame = tk.Frame(win, bg=bg)
-            row_frame.pack(fill="x", padx=20)
+            row_frame = tk.Frame(scroll_frame, bg=bg, width=TOTAL_COL_WIDTH, height=28)
+            row_frame.pack_propagate(False)
+            row_frame.pack(fill="x", pady=1)
+            d = entry.get("difficulty", 0)
+            diff_label = diff_names[d] if 1 <= d <= 5 else "–"
             row_vals = [
-                (str(i),                    5),
-                (entry["username"],         16),
-                (str(entry["wins"]),         6),
-                (str(entry["losses"]),       8),
-                (str(entry["total_games"]),  6),
+                str(i),
+                entry["username"],
+                diff_label,
+                str(entry["wins"]),
+                str(entry["losses"]),
             ]
-            for j, (val, width) in enumerate(row_vals):
+            for j, (val, col_w) in enumerate(zip(row_vals, COL_WIDTHS)):
                 if j > 0:
                     tk.Frame(row_frame, bg=SEP_COLOR, width=1).pack(
-                        side="left", fill="y", pady=2)
-                tk.Label(row_frame, text=val, width=width,
+                        side="left", fill="y")
+                col_frame = tk.Frame(row_frame, bg=bg, width=col_w)
+                col_frame.pack(side="left", fill="y")
+                col_frame.pack_propagate(False)
+                tk.Label(col_frame, text=val,
                          bg=bg, fg=COLORS["text_light"],
-                         font=("Segoe UI", 10), anchor="w").pack(side="left", padx=4, pady=3)
+                         font=("Segoe UI", 10), anchor="center").pack(
+                             fill="both", expand=True, pady=3)
 
-    make_button(win, t("close"), win.destroy, width=12).pack(pady=20)
+    # Scrollbar ein-/ausblenden
+    def _toggle_scrollbar(event=None):
+        bbox = data_canvas.bbox("all")
+        if bbox:
+            data_canvas.configure(scrollregion=bbox)
+        try:
+            content_h = scroll_frame.winfo_reqheight()
+            canvas_h = data_canvas.winfo_height()
+        except Exception:
+            return
+        if content_h > canvas_h + 2:
+            scrollbar.pack(side="right", fill="y")
+            data_canvas.configure(yscrollcommand=scrollbar.set)
+        else:
+            scrollbar.pack_forget()
+            data_canvas.configure(yscrollcommand="")
+
+    scroll_frame.bind("<Configure>", _toggle_scrollbar)
+    data_canvas.bind("<Configure>", _toggle_scrollbar)
+
+    # Mouse-Wheel-Scroll
+    def _on_mousewheel(event):
+        data_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    data_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    win.bind("<Destroy>", lambda e: data_canvas.unbind_all("<MouseWheel>"))
+
+    data_canvas.pack(side="left", fill="both", expand=True)
+
+    make_button(win, t("close"), win.destroy, width=12).pack(pady=16)
+
+    win.after(50, lambda: _center_popup(win, root))
+    win.after(150, _toggle_scrollbar)
 
 
 # ─────────────────────────────────────────────
@@ -502,6 +848,7 @@ def show_rules(root, game):
     win.geometry("420x380")
     win.resizable(False, False)
 
+    #passende regeln aus Modulen holen
     lang = app_state["language"]
     if game == "pawn_chess":
         rules_text = pc.RULES_DE if lang == "de" else pc.RULES_EN
@@ -512,31 +859,89 @@ def show_rules(root, game):
              bg=COLORS["bg_dark"], fg=COLORS["accent"],
              font=("Segoe UI", 15, "bold")).pack(pady=(20, 10))
 
+    #text Widget für mehrzeilige regeln
     text_widget = tk.Text(win, bg=COLORS["bg_card"], fg=COLORS["text_light"],
                           font=("Segoe UI", 10), relief="flat",
                           padx=15, pady=15, wrap="word")
-    text_widget.pack(fill="both", expand=True, padx=20)
+    text_widget.pack(fill="both", expand=True, padx=20, pady=(0, 12))
     text_widget.insert("1.0", rules_text)
     text_widget.config(state="disabled")
 
     make_button(win, t("close"), win.destroy, width=12).pack(pady=15)
 
+    _center_popup(win, root)
+
 
 # ─────────────────────────────────────────────
 # SPIELSCREEN
 # ─────────────────────────────────────────────
+#Größe Zelle in Pixel
 CELL_SIZE = 72
-PIECE_RADIUS = 26
 
+#globale referencen damit Funktionen zugreifen können
 board_canvas = None
 status_label = None
 game_widgets = {}  # Referenzen auf dynamische Widgets
+_piece_images = {}  # Figurenbilder, einmalig geladen und gecacht (pawn chess + 4-in-a-row)
+
+
+def _load_piece_images():
+    """Lädt pawn-white.png und pawn-black.png (vorgerenderte Figuren).
+    Gibt (white_img, black_img) zurück; beide None wenn die Dateien fehlen."""
+    import os
+    for key in ("white", "black"):
+        cache_key = (key, CELL_SIZE)
+        if cache_key in _piece_images:
+            _piece_images[key] = _piece_images[cache_key]
+            continue
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "Mockups", "Assets", "pawnchess", f"pawn-{key}.png")
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path).convert("RGBA")
+            # Scale to fit within cell, preserving aspect ratio (height-constrained)
+            target_h = CELL_SIZE - 8
+            target_w = round(img.width * target_h / img.height)
+            img = img.resize((target_w, target_h), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            _piece_images[(key, CELL_SIZE)] = photo
+            _piece_images[key] = photo
+        except Exception:
+            _piece_images[(key, CELL_SIZE)] = None
+            _piece_images[key] = None
+    return _piece_images.get("white"), _piece_images.get("black")
+
+
+def _load_ttt_images():
+    """Lädt player-stone.png und ai-stone.png für 4-in-a-Row.
+    Gibt (player_img, ai_img) zurück; beide None wenn die Dateien fehlen."""
+    import os
+    for key, filename in [("ttt_player", "player-stone.png"), ("ttt_ai", "ai-stone.png")]:
+        cache_key = (key, CELL_SIZE)
+        if cache_key in _piece_images:
+            _piece_images[key] = _piece_images[cache_key]
+            continue
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "Mockups", "Assets", "4_in_a_row", filename)
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path).convert("RGBA")
+            target = CELL_SIZE - 8  # quadratisch, kein Seitenverhältnis nötig
+            img = img.resize((target, target), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            _piece_images[cache_key] = photo
+            _piece_images[key] = photo
+        except Exception:
+            _piece_images[cache_key] = None
+            _piece_images[key] = None
+    return _piece_images.get("ttt_player"), _piece_images.get("ttt_ai")
 
 
 def build_game_screen(root, frame):
     """Baut den Spielscreen auf."""
     global board_canvas, status_label, game_widgets
     game_widgets = {}
+    set_gif_background(frame)
 
     game = app_state["game"]
     user = auth.get_current_user()
@@ -547,29 +952,57 @@ def build_game_screen(root, frame):
     else:
         app_state["board"] = ttt.create_board()
 
+    #Grundzustand für neues Spiel
     app_state["human_turn"] = True
     app_state["selected"] = None
     app_state["valid_moves"] = []
     app_state["game_over"] = False
     app_state["ai_thinking"] = False
 
-    # Header
-    header = tk.Frame(frame, bg=COLORS["bg_mid"], pady=10)
+    # Header (bg_dark = transparent zum GIF)
+    header = tk.Frame(frame, bg=COLORS["bg_dark"], pady=10)
     header.pack(fill="x")
 
     game_name = t("pawn_chess") if game == "pawn_chess" else t("tictactoe")
     diff_names = ["", t("easy"), t("medium"), t("hard"), t("expert"), t("master")]
     diff_name = diff_names[app_state["difficulty"]]
 
+    tk.Label(header, text="BlitzBoard",
+             bg=COLORS["bg_dark"], fg=COLORS["accent"],
+             font=("Segoe UI", 16, "bold")).pack(side="left", padx=(20, 6))
     tk.Label(header, text=f"{game_name}  |  {t('level')}: {diff_name}",
-             bg=COLORS["bg_mid"], fg=COLORS["text_light"],
-             font=("Segoe UI", 13, "bold")).pack(side="left", padx=20)
+             bg=COLORS["bg_dark"], fg=COLORS["text_light"],
+             font=("Segoe UI", 13, "bold")).pack(side="left", padx=(0, 20))
 
     def do_abort():
-        if messagebox.askyesno(t("abort"), t("confirm_abort")):
+        dialog = tk.Toplevel(root)
+        dialog.title(t("abort"))
+        dialog.resizable(False, False)
+        dialog.configure(bg=COLORS["bg_dark"])
+        dialog.grab_set()
+
+        card = tk.Frame(dialog, bg=COLORS["bg_card"], padx=24, pady=20)
+        card.pack(padx=20, pady=20)
+
+        tk.Label(card, text=t("confirm_abort"),
+                 bg=COLORS["bg_card"], fg=COLORS["text_light"],
+                 font=("Segoe UI", 11)).pack(pady=(0, 16))
+
+        btn_row = tk.Frame(card, bg=COLORS["bg_card"])
+        btn_row.pack()
+
+        def yes():
+            dialog.destroy()
             show_screen(root, build_main_menu)
 
-    btn_frame = tk.Frame(header, bg=COLORS["bg_mid"])
+        make_button(btn_row, t("abort"), yes, width=12).pack(side="left", padx=4)
+        make_button(btn_row, t("back"), dialog.destroy, width=10,
+                    bg="#444466").pack(side="left", padx=4)
+
+        _center_popup(dialog, root)
+
+    #Header Buttons: Regeln und Spiel abbrechen
+    btn_frame = tk.Frame(header, bg=COLORS["bg_dark"])
     btn_frame.pack(side="right", padx=10)
     make_button(btn_frame, t("rules"),
                 lambda: show_rules(root, game), width=10,
@@ -589,14 +1022,16 @@ def build_game_screen(root, frame):
                              font=("Segoe UI", 13, "bold"))
     status_label.pack(pady=(12, 6))
 
-    # Spielfeld-Canvas
+    # Spielfeld-Canvas: quadratisch 6x6
     canvas_size = CELL_SIZE * 6
     board_canvas = tk.Canvas(frame, width=canvas_size, height=canvas_size,
                               bg=COLORS["bg_dark"], highlightthickness=0)
     board_canvas.pack(pady=10)
 
+    #erstes Zeichnen des Boards
     draw_board()
 
+    #Klicks verarbeiten
     board_canvas.bind("<Button-1>", on_board_click)
 
     # Zurück-Button
@@ -619,6 +1054,7 @@ def draw_board():
     selected = app_state["selected"]
     valid_moves = app_state["valid_moves"]
 
+    # Nur Zielfelder extrahieren (Index 2,3 im Zug-Tupel: to_row, to_col)
     valid_targets = set((m[2], m[3]) for m in valid_moves) if game == "pawn_chess" else set()
 
     for row in range(6):
@@ -645,7 +1081,7 @@ def draw_board():
                 cell_color = COLORS["valid_move"]
 
             # Kontur: normale Felder bekommen eine dünne Trennlinie
-            border_color = "#444444"
+            border_color = "#2a1060"
             border_width = 1
             if is_selected:
                 border_color = COLORS["highlight_out"]
@@ -654,6 +1090,7 @@ def draw_board():
                 border_color = COLORS["valid_move_out"]
                 border_width = 3
 
+            #feld zeichnen
             board_canvas.create_rectangle(x0, y0, x1, y1,
                                            fill=cell_color,
                                            outline=border_color,
@@ -663,68 +1100,33 @@ def draw_board():
             cell = board[row][col]
             cx = x0 + CELL_SIZE // 2
             cy = y0 + CELL_SIZE // 2
-            r = PIECE_RADIUS
 
             if game == "pawn_chess":
-                if cell == pc.WHITE:
-                    # Weißer Bauer: reines Weiß, dunkle Kontur → sichtbar auf jedem Feld
-                    _draw_piece(board_canvas, cx, cy, r,
-                                COLORS["white_piece"], COLORS["white_piece_out"])
-                    # Kleines "W"-Symbol zur Unterscheidung
-                    board_canvas.create_text(cx, cy, text="♙",
-                                              fill=COLORS["white_piece_out"],
-                                              font=("Arial", 22, "bold"))
-                elif cell == pc.BLACK:
-                    # Schwarzer Bauer: dunkles Blau, helle Kontur → sichtbar auf jedem Feld
-                    _draw_piece(board_canvas, cx, cy, r,
-                                COLORS["black_piece"], COLORS["black_piece_out"])
-                    board_canvas.create_text(cx, cy, text="♟",
-                                              fill=COLORS["black_piece_out"],
-                                              font=("Arial", 22, "bold"))
+                white_img, black_img = _load_piece_images()
+                if cell == pc.WHITE and white_img:
+                    board_canvas.create_image(cx, cy, image=white_img, anchor="center")
+                elif cell == pc.BLACK and black_img:
+                    board_canvas.create_image(cx, cy, image=black_img, anchor="center")
 
             elif game == "tictactoe":
-                if cell == ttt.HUMAN:
-                    # X: hellblau, breite Linien, dunkle Umrahmung → gut lesbar
-                    d = 20
-                    for dx, dy in [(1, 1), (-1, -1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill="#1a237e", width=6)
-                    for dx, dy in [(1, -1), (-1, 1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill="#1a237e", width=6)
-                    # Heller Vordergrund
-                    for dx, dy in [(1, 1), (-1, -1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill=COLORS["ttt_x"], width=3)
-                    for dx, dy in [(1, -1), (-1, 1)]:
-                        board_canvas.create_line(
-                            cx - d * dx, cy - d * dy,
-                            cx + d * dx, cy + d * dy,
-                            fill=COLORS["ttt_x"], width=3)
+                player_img, ai_img = _load_ttt_images()
+                if cell == ttt.HUMAN and player_img:
+                    board_canvas.create_image(cx, cy, image=player_img, anchor="center")
+                elif cell == ttt.AI and ai_img:
+                    board_canvas.create_image(cx, cy, image=ai_img, anchor="center")
 
-                elif cell == ttt.AI:
-                    # O: rot, breite Kontur, dunkle Schatten-Oval → gut lesbar
-                    board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
-                                              outline="#7f0000", width=6)
-                    board_canvas.create_oval(cx - 22, cy - 22, cx + 22, cy + 22,
-                                              outline=COLORS["ttt_o"], width=3)
-
-
-def _draw_piece(canvas, cx, cy, r, fill, outline):
-    """Zeichnet eine runde Spielfigur mit Schatten-Effekt für Tiefenwirkung."""
-    # Schatten (leicht versetzt)
-    canvas.create_oval(cx - r + 3, cy - r + 3, cx + r + 3, cy + r + 3,
-                        fill="#111111",
-                        outline="")
-    # Haupt-Oval
-    canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                        fill=fill, outline=outline, width=3)
+    # Neon-Gitterlinien über alle Felder und Figuren zeichnen
+    board_size = CELL_SIZE * 6
+    edge = board_size - 1  # tkinter-Koordinaten enden bei width-1
+    for i in range(1, 6):  # innere Linien
+        pos = i * CELL_SIZE
+        board_canvas.create_line(pos, 0, pos, edge,
+                                  fill=COLORS["valid_move"], width=1)
+        board_canvas.create_line(0, pos, edge, pos,
+                                  fill=COLORS["valid_move"], width=1)
+    # Äußerer Rahmen als Rechteck (garantiert sichtbar an allen vier Kanten)
+    board_canvas.create_rectangle(0, 0, edge, edge,
+                                   outline=COLORS["valid_move"], width=1)
 
 
 def on_board_click(event):
@@ -798,7 +1200,7 @@ def handle_pawn_chess_click(row, col):
     # Neue Figur auswählen
     if board[row][col] == pc.WHITE:
         all_moves = pc.get_valid_moves(board, False)
-        piece_moves = [m for m in all_moves if m[0] == row and m[1] == col]
+        piece_moves = [m for m in all_moves if m[0] == row and m[1] == col]  # Nur Züge dieser Figur (from_row, from_col)
         app_state["selected"] = (row, col)
         app_state["valid_moves"] = piece_moves
     else:
@@ -847,7 +1249,7 @@ def start_ai_turn():
         # GUI-Update im Hauptthread
         board_canvas.after(0, lambda: after_ai_turn(winner))
 
-    thread = threading.Thread(target=ai_worker, daemon=True)
+    thread = threading.Thread(target=ai_worker, daemon=True)  # daemon=True: Thread endet automatisch mit dem Programm
     thread.start()
 
 
@@ -899,19 +1301,54 @@ def end_game(winner):
 # ─────────────────────────────────────────────
 # PROGRAMMSTART
 # ─────────────────────────────────────────────
+def _ensure_dependencies():
+    """Installiert fehlende Abhängigkeiten aus requirements.txt automatisch."""
+    import subprocess, sys, os
+    req = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+    if os.path.exists(req):
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", req, "--quiet"],
+            check=False
+        )
+
+
 def main():
     """Startet die Anwendung."""
+    _ensure_dependencies()
     database.init_db()
 
     root = tk.Tk()
-    root.title("HHBKTendo-BlitzBoard")
+    root.title("BlitzBoard")
     root.geometry("820x700")
     root.minsize(720, 600)
     root.configure(bg=COLORS["bg_dark"])
 
-    # Fenstericon (falls vorhanden)
+    # GIF-Frames einmalig laden und globalen Animations-Takt starten
+    _gif["root"] = root
+    _load_gif_frames()
+    if _gif["frames"]:
+        _gif_tick()
+
+    # Fenstericon: Controller-Logo aus den Assets
     try:
-        root.iconbitmap("icon.ico")
+        import os
+        from PIL import Image, ImageTk
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "Mockups", "Assets", "Logo",
+                                 "Only_Controller_Logo_HHBKTendo.png")
+        icon_pil = Image.open(icon_path).convert("RGBA")
+        # Hintergrund transparent machen (gleiche Logik wie im Header)
+        pixels = icon_pil.load()
+        bg_color = pixels[0, 0][:3]
+        for y in range(icon_pil.height):
+            for x in range(icon_pil.width):
+                r, g, b, a = pixels[x, y]
+                if all(abs(int(c) - int(bg)) <= 30 for c, bg in zip((r, g, b), bg_color)):
+                    pixels[x, y] = (r, g, b, 0)
+        icon_pil = icon_pil.resize((32, 32), Image.LANCZOS)
+        icon_img = ImageTk.PhotoImage(icon_pil)
+        root.iconphoto(True, icon_img)
+        root._icon_img = icon_img  # Referenz halten
     except Exception:
         pass
 
