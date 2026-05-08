@@ -1,5 +1,28 @@
 # Technische Dokumentation – BlitzBoard / HHBKTendo Spielesammlung
 
+## Inhaltsverzeichnis
+
+- [1. Projektübersicht](#1-projektübersicht)
+- [2. Systemarchitektur](#2-systemarchitektur)
+  - [2.1 Modulübersicht](#21-modulübersicht)
+  - [2.2 Abhängigkeitsdiagramm](#22-abhängigkeitsdiagramm)
+- [3. Modul-Dokumentation](#3-modul-dokumentation)
+  - [3.1 main.py – Hauptprogramm & GUI](#31-mainpy--hauptprogramm--gui)
+  - [3.2 minimax.py – KI-Algorithmus](#32-minimaxpy--ki-algorithmus)
+  - [3.3 pawn_chess.py – Bauernschach](#33-pawn_chesspy--bauernschach)
+  - [3.4 tictactoe.py – Tic-Tac-Toe (4 gewinnt)](#34-tictactoepy--tic-tac-toe-4-gewinnt)
+  - [3.5 database.py – Datenbankschicht](#35-databasepy--datenbankschicht)
+  - [3.6 auth.py – Authentifizierung](#36-authpy--authentifizierung)
+- [4. Spielablauf](#4-spielablauf)
+  - [4.1 Programmstart](#41-programmstart)
+  - [4.2 Spielrunde](#42-spielrunde)
+- [5. Schwierigkeitsgrade](#5-schwierigkeitsgrade)
+- [6. Testabdeckung (test_all.py)](#6-testabdeckung-test_allpy)
+- [7. Design & Internationalisierung](#7-design--internationalisierung)
+- [8. Dateistruktur zur Laufzeit](#8-dateistruktur-zur-laufzeit)
+
+---
+
 ## 1. Projektübersicht
 
 **BlitzBoard** (intern auch *HHBKTendo*) ist eine Desktop-Spielesammlung mit zwei Brettspielen, die gegen eine KI gespielt werden können. Die Anwendung ist in Python mit einer tkinter-GUI realisiert und wurde im Rahmen eines Berufsschulprojekts entwickelt.
